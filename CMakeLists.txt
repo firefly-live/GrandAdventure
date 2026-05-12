@@ -3,6 +3,7 @@ project(grandAdventure-tsq LANGUAGES CXX)
 
 find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets)
 
+
 qt_standard_project_setup()
 
 qt_add_executable(grandAdventure-tsq
@@ -11,7 +12,10 @@ qt_add_executable(grandAdventure-tsq
     mainwindow.cpp
     mainwindow.h
     mainwindow.ui
+    ${CMAKE_CURRENT_SOURCE_DIR}/Documents/requirements.txt
+    ${CMAKE_CURRENT_SOURCE_DIR}/Documents/Needs.txt
 )
+
 
 target_link_libraries(grandAdventure-tsq
     PRIVATE
@@ -33,5 +37,5 @@ qt_generate_deploy_app_script(
     NO_UNSUPPORTED_PLATFORM_ERROR
 )
 
-add_subdirectory(Documents/)
+
 install(SCRIPT ${deploy_script})
