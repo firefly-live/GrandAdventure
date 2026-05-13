@@ -14,6 +14,8 @@ qt_add_executable(grandAdventure-tsq
     mainwindow.ui
     ${CMAKE_CURRENT_SOURCE_DIR}/Documents/requirements.txt
     ${CMAKE_CURRENT_SOURCE_DIR}/Documents/Needs.txt
+    function_test.h function_test.cpp
+
 )
 
 
