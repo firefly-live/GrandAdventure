@@ -1,7 +1,7 @@
 #ifndef FUNCTION_TEST_H
 #define FUNCTION_TEST_H
 
-#include<Qvector>
+#include<QVector>
 #include<QImage>
 #include<QString>
 #include<QDebug>
@@ -10,8 +10,10 @@
 #include<QLabel>
 #include<QPixmap>
 #include<QCoreApplication>
-class Function_Test
+#include<QKeyEvent>
+class Function_Test:public QWidget
 {
+    Q_OBJECT
 public:
     Function_Test();
 
@@ -20,15 +22,22 @@ public:
     //测试播放设置,设置测试窗口
      void startAnimation();
 
+      void keyPressEvent(QKeyEvent *event) ;//测试移动
+
     void testfunction();
+
+
 
 
     //测试属性
     QVector<QImage*> _frames;//存储动画
     int _currentFrame = 0;//记录当前帧率
-    QLabel *_label;//存储label的image
+    QLabel *_label;//存储label的image--->是控制对象
     QTimer *_animTimer;//时钟差--动起来
-    QMainWindow *testwindow;
+
+
+    int _x=0;
+    int _y=0;
 
 };
 
