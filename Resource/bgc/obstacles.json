@@ -1,0 +1,65 @@
+{
+  "map": {
+    "width": 1625,
+    "height": 968,
+    "origin": "top-left"
+  },
+  "collisionObjects": [
+    {
+      "id": "rock_01",
+      "type": "rock",
+      "x": 331,
+      "y": 214,
+      "width": 30,
+      "height": 20
+    },
+    {
+      "id": "stump_01",
+      "type": "stump",
+      "x": 778,
+      "y": 283,
+      "width": 40,
+      "height": 18
+    },
+    {
+      "id": "rockpile_01",
+      "type": "rockpile",
+      "x": 1286,
+      "y": 219,
+      "width": 42,
+      "height": 16
+    },
+    {
+      "id": "crate_01",
+      "type": "crate",
+      "x": 210,
+      "y": 595,
+      "width": 38,
+      "height": 18
+    },
+    {
+      "id": "barrel_01",
+      "type": "barrel",
+      "x": 1344,
+      "y": 675,
+      "width": 30,
+      "height": 18
+    },
+    {
+      "id": "altar_01",
+      "type": "altar",
+      "x": 730,
+      "y": 780,
+      "width": 145,
+      "height": 55
+    },
+    {
+      "id": "statue_01",
+      "type": "statue",
+      "x": 775,
+      "y": 728,
+      "width": 48,
+      "height": 38
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+GrandAdventure/                         # 项目根目录
+├── CMakeLists.txt                      # CMake构建配置（查找Qt6::Core, Widgets, Quick等模块）
+├── resources.qrc                       # Qt资源文件（将qml/和assets/嵌入二进制，便于访问）
+│
+├── src/                                # C++ 源码目录
+│   ├── main.cpp                        # 程序入口：创建QApplication、MainWindow，启动事件循环
+│   │
+│   ├── core/                           # 游戏引擎核心（与具体游戏逻辑解耦）
+│   │   ├── GameApplication.h/cpp       # 单例类，持有QTimer主循环和SceneManager，驱动游戏更新
+│   │   ├── SceneManager.h/cpp          # 场景管理器：切换场景（switchScene），转发update/draw到当前场景
+│   │   ├── Scene.h/cpp                 # 场景基类：定义onEnter/onExit/update/draw纯虚接口
+│   │   └── GameObject.h/cpp            # 游戏对象基类：坐标、碰撞箱，提供update/draw/collisionRect虚函数
+│   │
+│   ├── scenes/                         # 具体场景（每类游戏状态一个类）
+│   │   ├── MenuScene.h/cpp             # 主菜单：显示开始游戏、退出按钮（或等待输入）
+│   │   ├── CharacterSelectScene.h/cpp  # 选角色：展示可选角色，确认后进入PlayScene
+│   │   ├── PlayScene.h/cpp             # 核心战斗场景：持有玩家/敌人/子弹列表，每帧更新碰撞、生成、升级判定
+│   │   ├── PauseScene.h/cpp            # 暂停场景：覆盖在PlayScene上，可恢复或返回主菜单
+│   │   ├── UpgradeScene.h/cpp          # 升级选择场景：每升一级弹出，提供能力三选一
+│   │   └── DeathScene.h/cpp            # 死亡场景：显示得分，提供“重新开局”（回选角色）或“结束对局”（回主菜单）
+│   │
+│   ├── gameobjects/                    # 游戏实体（派生自GameObject或Character）
+│   │   ├── Character.h/cpp             # 角色基类（HP、阵营、takeDamage、die）
+│   │   ├── Player.h/cpp                # 玩家类：响应键盘输入，移动，射击，生命管理等
+│   │   ├── Enemy.h/cpp                 # 敌人基类：AI移动（追踪玩家），碰撞伤害逻辑
+│   │   ├── Pig.h/cpp                   # 具体敌人：猪（简单巡逻或冲撞行为）
+│   │   ├── Weapon.h/cpp                # 武器基类：冷却时间、攻击方法、生成子弹
+│   │   ├── SurroundWeapon.h/cpp        # 具体武器：环绕玩家旋转，自动攻击附近敌人
+│   │   └── Bullet.h/cpp                # 子弹：直线移动，命中后消失并造成伤害
+│   │
+│   ├── ui/                             # 界面层（QWidget 捕获输入，QML 渲染显示）
+│   │   ├── MainWindow.h/cpp            # 主窗口（继承QMainWindow），重写keyPressEvent捕获键盘输入
+│   │   ├── GameRenderer.h/cpp          # 渲染数据提供者：将玩家坐标、敌人列表等暴露给QML（通过setContextProperty）
+│   │   └── QmlInputBridge.h/cpp        # 可选：专门处理QML调用的桥接类（例如开始游戏、升级选择）
+│   │
+│   └── utils/                          # 工具类
+│       ├── ResourceLoader.h/cpp        # 加载图片、音效等资源（支持从qrc或外部文件）
+│       ├── CollisionDetection.h/cpp    # 碰撞检测函数（AABB、圆形、像素级等）
+│       └── MathUtils.h/cpp             # 数学辅助函数（角度转弧度、向量运算、随机数等）
+│
+├── qml/                                # QML界面文件（负责动态渲染和动画）
+│   ├── GameCanvas.qml                  # 主游戏画布（显示玩家、敌人、子弹的Image组件）
+│   ├── MenuUI.qml                      # 菜单界面（按钮、背景）
+│   ├── HUD.qml                         # 头顶显示：血条、分数、经验值
+│   └── components/                     # 可复用QML组件
+│       ├── PlayerSprite.qml            # 玩家动画：根据移动方向切换图片序列帧
+│       └── EnemySprite.qml             # 敌人动画：待机或移动动画
+│
+├── Resource/ 
+|      |------bgc/                      # 原始资源文件（编译时通过.qrc注册或运行时加载）
+│   ├──role/                         # 图片（角色png、背景、UI元素）
+│   ├── sounds/                         # 音效（射击、受击、背景音乐）
+│   └──weapen/                          # 字体（可选，用于HUD文字）
+│
+└── docs/                               # 项目文档
+    ├── GDD.md                          # 游戏设计文档
+    └── TechDesign.md                   # 技术设计文档（架构图、类图等）
