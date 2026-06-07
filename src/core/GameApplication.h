@@ -8,6 +8,9 @@
 #include <QObject>
 #include <QTimer>
 
+class MainWindow;
+
+
 class GameApplication : public QObject {
     Q_OBJECT
 public:

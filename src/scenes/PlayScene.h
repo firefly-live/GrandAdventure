@@ -25,6 +25,7 @@ public:
 
     // 供 MainWindow 调用来设置移动方向
     void setMoveDirection(const QPointF& dir);
+    QRectF playerRect() const { return m_playerRect; }//暴露给windwo,然后window对象player对象的坐标属性,方便传递给qml,修改qml数据
 
 private:
     void loadObstacles(const QString& path);

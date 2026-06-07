@@ -6,9 +6,14 @@
 
 #pragma once
 #include <QMainWindow>
-
+#include <QQuickWidget>
 class MainWindow : public QMainWindow {
     Q_OBJECT
 public:
     MainWindow(QWidget* parent = nullptr);
+    static MainWindow *instance();
+    void updatePlayerPosition(const QPointF& pos);
+private:
+    QQuickWidget* m_qmlWidget = nullptr;//加载aml显示对象
+    QObject* m_qmlRoot = nullptr;//加载游戏对象信息
 };
