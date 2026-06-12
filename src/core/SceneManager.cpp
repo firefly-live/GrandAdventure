@@ -14,6 +14,7 @@ SceneManager::~SceneManager() {
 
 void SceneManager::registerScene(SceneType type, Scene* scene) {
     m_scenes[type] = scene;
+
 }
 
 void SceneManager::switchTo(SceneType type) {
@@ -35,4 +36,13 @@ void SceneManager::update(int deltaMs) {
 
 void SceneManager::draw() {
     if (m_currentScene) m_currentScene->draw();//更新数据后就绘制
+}
+
+
+Scene* SceneManager::findTypeScene(SceneType type) {
+    auto it = m_scenes.find(type);
+    if (it != m_scenes.end()) {
+        return it->second;
+    }
+    return nullptr;  // 没找到返回空指针
 }

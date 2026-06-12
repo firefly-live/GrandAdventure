@@ -39,6 +39,9 @@ public:
     void update(int deltaMs);
     void draw();
 
+    //返回特定的Scene的Type
+    Scene* findTypeScene( SceneType Type);
+
 private:
     SceneManager() = default;
      std::unordered_map<SceneType, Scene*> m_scenes;

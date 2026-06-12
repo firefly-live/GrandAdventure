@@ -11,18 +11,18 @@ GameApplication* GameApplication::instance() {
 
 void GameApplication::start() {
     QObject::connect(&m_timer, &QTimer::timeout, [this]() {
-        if (auto scene = dynamic_cast<PlayScene*>(SceneManager::instance()->currentScene())) {
-            if (MainWindow* w = MainWindow::instance()) { // 需要获取 MainWindow 实例的方式
-                w->updatePlayerPosition(scene->playerRect().topLeft());//更新传入window->qml->游戏的具体对象
-            }
-        }
+        // 1. 更新游戏逻辑
+        SceneManager::instance()->update(16);
+        // 2. 更新 QML 坐标
+        // if (auto scene = dynamic_cast<PlayScene*>(SceneManager::instance()->currentScene())) {
+        //     if (MainWindow* w = MainWindow::instance()) {
+        //         w->updatePlayerPosition(scene->playerRect().topLeft());
+        //          // qDebug()<<"yes charcatr scene install";
+        //     }
+        // }
 
-
-
-    SceneManager::instance()->update(16);//通过调用场景管理器当中的静态对象进行数据逻辑的更新
-        // 触发渲染（后续可通过信号通知 QML）--->当数据处理完毕的时候,再让场景管理器对各自场景当中的信息进行更新渲染的操作,以便于达到动画的效果
     });
-    m_timer.start(16); // 60 FPS
+    m_timer.start(16);
 }
 
 void GameApplication::stop() {

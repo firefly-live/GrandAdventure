@@ -7,12 +7,22 @@
 #pragma once
 #include <QMainWindow>
 #include <QQuickWidget>
+#include<QKeyEvent>
+
 class MainWindow : public QMainWindow {
     Q_OBJECT
 public:
     MainWindow(QWidget* parent = nullptr);
     static MainWindow *instance();
     void updatePlayerPosition(const QPointF& pos);
+
+
+
+    //按键操作
+    void keyPressEvent(QKeyEvent* event);//不同场景下对于按键触发有不同实现逻辑
+    void keyReleaseEvent(QKeyEvent* event);//不同场景下对于按键触发有不同实现逻辑
+
+
 private:
     QQuickWidget* m_qmlWidget = nullptr;//加载aml显示对象
     QObject* m_qmlRoot = nullptr;//加载游戏对象信息

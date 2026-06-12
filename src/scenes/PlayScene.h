@@ -8,6 +8,11 @@
 #include "../core/Scene.h"
 #include <QVector>
 #include <QRectF>
+//增加角色移动方位
+enum class AnimDir { Idle, Left, Right, Up, Down };
+
+
+
 
 struct Obstacle {
     QRectF rect;
@@ -15,6 +20,9 @@ struct Obstacle {
 
 class PlayScene : public Scene {
     Q_OBJECT
+
+public:
+    Q_PROPERTY(QRectF playerRect READ playerRect NOTIFY playerRectChanged);//暴露玩家坐标给qml直接读取,防止注册导致渲染错误
 public:
     explicit PlayScene(QObject* parent = nullptr);
     void onEnter() override;//进入场景后加载场景中障碍物的坐标,便于碰撞检测
@@ -23,9 +31,14 @@ public:
 
 
 
-    // 供 MainWindow 调用来设置移动方向
+    // 供 MainWindow 调用来设置移动方向--角色移动相关
     void setMoveDirection(const QPointF& dir);
     QRectF playerRect() const { return m_playerRect; }//暴露给windwo,然后window对象player对象的坐标属性,方便传递给qml,修改qml数据
+    void onKeyPress(Qt::Key key);
+    void onKeyRelease(Qt::Key key);
+    AnimDir animDirection() const { return m_animDir; }
+signals:
+    void playerRectChanged();  // 必须在修改 m_playerRect 后发射
 
 private:
     void loadObstacles(const QString& path);
@@ -38,4 +51,11 @@ private:
     QRectF m_playerRect;      // 玩家碰撞箱（位置+宽高）
     QPointF m_moveDir;        // 单位方向
     float m_speed = 5.0f;
+
+
+// 供 MainWindow 调用来设置移动方向--角色移动相关
+    void updateMovement();  // 根据按键组合更新 m_moveDir 和 m_animDir
+    bool m_left = false, m_right = false, m_up = false, m_down = false;
+    AnimDir m_animDir = AnimDir::Idle;
+
 };

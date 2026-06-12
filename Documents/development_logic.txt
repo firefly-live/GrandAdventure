@@ -1,0 +1,113 @@
+用户按键
+    │
+    ▼
+MainWindow (QWidget)
+    │  重写 keyPressEvent / keyReleaseEvent
+    │  捕获所有键盘输入
+    │
+    ▼
+SceneManager (C++)
+    │  转发给当前场景
+    │
+    ▼
+当前场景 (C++)
+    │  处理逻辑：玩家移动、碰撞检测、敌人AI
+    │  更新所有 GameObject 的数据（坐标、血量、状态）
+    │
+    ▼
+QML 层 (绘图层)
+    │  通过属性绑定或信号槽接收 C++ 数据变化
+    │  自动重新渲染画面
+    │
+    ▼
+屏幕显示
+----------------------------------------------------------------------------------------数据流向--------------------------------------------------------------------------------
+
+
+	主循环-----(输入-处理--更新绘制)
+
+
+belike:
+
+输入层 (QWidget)
+    MainWindow
+    keyPressEvent → SceneManager::handleInput()
+         │
+         ▼
+逻辑层 (C++)
+    SceneManager → PlayScene
+    PlayScene::update() {
+        player.update();
+        enemy.update();
+        checkCollisions();
+    }
+    GameRenderer::sync() {
+        // 将 C++ 数据同步到可暴露属性
+        m_playerX = player.worldPos.x();
+        m_playerY = player.worldPos.y();
+        m_enemies = enemyList.toVariantList();
+        emit dataChanged();
+    }
+         │
+         ▼
+渲染层 (QML)
+    GameCanvas.qml
+    Rectangle {  // 玩家
+        x: renderer.playerX
+        y: renderer.playerY
+        Image { source: renderer.playerImage }
+    }
+    Repeater {  // 敌人列表
+        model: renderer.enemies
+        Rectangle {
+            x: modelData.x
+            y: modelData.y
+        }
+    }
+
+
+----------------------------------------------------------------------------------------------------------------------开发顺序
+
+1: 搭建空场景框架：先实现 Scene 基类和 SceneManager，让主循环能切换空场景。
+
+2: 实现 PlayScene 基础：加载 Resource/bgc/obstacles.json，解析为 QList<Obstacle>，并在 update 中做简单碰撞检测（玩家 vs 障碍物）。
+
+3: QML 显示：GameCanvas.qml 只显示背景图和玩家/敌人图片；碰撞数据只在 C++ 侧维护。
+
+
+
+
+4: 用 MainWindow 捕获输入：将按键转发给 PlayScene 的玩家移动逻辑。
+
+	GameApplication 的定时器每 16ms 触发一次，调用 SceneManager::instance()->currentScene() 获取当前场景。
+
+	如果当前场景是 PlayScene，则获取它的玩家坐标（通过 playerRect().topLeft()）。
+
+	将这个坐标传递给 MainWindow 的一个方法，例如 updatePlayerPosition(x, y)。
+
+	MainWindow 内部持有 QQuickWidget 的根对象指针，通过 setProperty("playerX", x) 修改 QML 中定义的属性 playerX 和 playerY。
+
+	QML 中的 Image 组件绑定了 playerX 和 playerY，属性变化时会自动移动到新位置。
+
+
+	不同的场景,会分发道具体场景当中的按键输入操作
+	
+
+
+5: 逐步加入敌人、武器：基于 GameObject 体系扩展。
+
+
+
+
+
+
+
+
+--------------------------------------------开发bug1-----------------------------
+修复QML角色位置渲染不更新问题
+原方案通过setProperty修改坐标，因主线程阻塞或绑定破坏导致界面卡死。
+现改为：在PlayScene中声明Q_PROPERTY(QRectF playerRect)，C++游戏逻辑更新坐标后发射playerRectChanged信号，
+QML直接绑定playerRect.x/y。彻底避免直接属性赋值与事件循环竞争，渲染即时响应，代码更健壮。
+
+
+
