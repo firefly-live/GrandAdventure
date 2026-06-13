@@ -68,9 +68,9 @@ void PlayScene::movePlayer(const QPointF& delta) {
     // 边界裁剪---如果角色移动方位导致移出边界,那么会对边界进行检测,如果移动出去了,那么就归为到原位置
     //通过计算边界和角色碰撞箱的位置来实现操作
     qreal minX = m_mapBounds.left();
-    qreal maxX = m_mapBounds.right() - m_playerRect.width();//位置能移动最大是地图-玩家宽
+    qreal maxX = m_mapBounds.right();//位置能移动最大是地图-玩家宽
     qreal minY = m_mapBounds.top();
-    qreal maxY = m_mapBounds.bottom() - m_playerRect.height();//位置能移动最大是地图-玩家高
+    qreal maxY = m_mapBounds.bottom();//位置能移动最大是地图-玩家高
     if (newRect.left() < minX) newRect.moveLeft(minX);
     if (newRect.right() > maxX) newRect.moveRight(maxX);
     if (newRect.top() < minY) newRect.moveTop(minY);

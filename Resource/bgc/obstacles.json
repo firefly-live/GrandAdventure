@@ -6,60 +6,52 @@
   },
   "collisionObjects": [
     {
-      "id": "rock_01",
-      "type": "rock",
-      "x": 331,
-      "y": 214,
-      "width": 30,
-      "height": 20
+      "id": "object_01",
+      "type": "unknown",
+      "x": 350,
+      "y": 200,
+      "width": 9,
+      "height": 9
     },
     {
-      "id": "stump_01",
-      "type": "stump",
-      "x": 778,
-      "y": 283,
-      "width": 40,
-      "height": 18
+      "id": "object_02",
+      "type": "unknown",
+      "x": 810,
+      "y": 265,
+      "width": 10,
+      "height": 17
     },
     {
-      "id": "rockpile_01",
-      "type": "rockpile",
-      "x": 1286,
-      "y": 219,
-      "width": 42,
-      "height": 16
+      "id": "object_03",
+      "type": "unknown",
+      "x": 1315,
+      "y": 201,
+      "width": 23,
+      "height": 23
     },
     {
-      "id": "crate_01",
-      "type": "crate",
-      "x": 210,
-      "y": 595,
-      "width": 38,
-      "height": 18
+      "id": "object_04",
+      "type": "unknown",
+      "x": 225,
+      "y": 585,
+      "width": 16,
+      "height": 21
     },
     {
-      "id": "barrel_01",
-      "type": "barrel",
-      "x": 1344,
-      "y": 675,
-      "width": 30,
-      "height": 18
+      "id": "object_05",
+      "type": "unknown",
+      "x": 1370,
+      "y": 660,
+      "width": 17,
+      "height": 17
     },
     {
-      "id": "altar_01",
-      "type": "altar",
-      "x": 730,
-      "y": 780,
-      "width": 145,
-      "height": 55
-    },
-    {
-      "id": "statue_01",
-      "type": "statue",
-      "x": 775,
-      "y": 728,
-      "width": 48,
-      "height": 38
+      "id": "object_06",
+      "type": "unknown",
+      "x": 768,
+      "y": 660,
+      "width": 80,
+      "height": 88
     }
   ]
 }

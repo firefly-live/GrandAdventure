@@ -7,7 +7,7 @@
 #include"../core/SceneManager.h"
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
-    setFixedSize(1280, 720);
+    setFixedSize(1625,968);
     m_qmlWidget = new QQuickWidget(this);
     m_qmlWidget->setResizeMode(QQuickWidget::SizeRootObjectToView);
 
