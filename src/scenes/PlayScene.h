@@ -85,13 +85,14 @@ private:
     void loadObstacles(const QString& path);
     void movePlayer(const QPointF& delta); //传入新坐标然后检测---防止玩家移动出地图
     bool collidesWithObstacles() const;
+    bool collidesWithObstacles(const QRectF& rect) const;//重载检测,用于测试敌人对障碍物碰撞
 
     QRectF m_mapBounds;//地图边界操作
 
     QVector<Obstacle> m_obstacles;  //场景中的碰撞障碍物
     QRectF m_playerRect;      // 玩家碰撞箱（位置+宽高）
     QPointF m_moveDir;        // 单位方向
-    float m_speed = 4.0f;
+    float m_speed = 5.0f;
 
 
 // 供 MainWindow 调用来设置移动方向--角色移动相关
@@ -104,7 +105,7 @@ private:
 
 
     //--------------------------------------------------敌人类
-    void updateEnemies(int deltaMs);    //更新敌人
+    void updateEnemies(int deltaMs);    //更新敌人--碰撞检测什么的
     void spawnEnemy();              //生成敌人
     void avoidEnemyCollision();     //碰撞箱子
     QList<Enemy> m_enemies;         //敌人列表

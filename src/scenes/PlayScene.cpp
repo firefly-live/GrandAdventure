@@ -114,6 +114,13 @@ bool PlayScene::collidesWithObstacles() const {
     return false;
 }
 
+bool PlayScene::collidesWithObstacles(const QRectF& rect) const {
+    for (const Obstacle& obs : m_obstacles) {
+        if (rect.intersects(obs.rect))
+            return true;
+    }
+    return false;
+}
 
 
 
@@ -253,16 +260,28 @@ void PlayScene::updateEnemies(int deltaMs) {
         for (int j = i+1; j < m_enemies.size(); ++j) {
             QRectF& r1 = m_enemies[i].rect;
             QRectF& r2 = m_enemies[j].rect;
-            if (r1.intersects(r2)) {
+
+            // 计算物理碰撞箱（宽高各为原矩形的一半，中心不变）
+            QRectF phy1 = QRectF(r1.center().x() - r1.width()/4,
+                                 r1.center().y() - r1.height()/4,
+                                 r1.width()/2, r1.height()/2);
+            QRectF phy2 = QRectF(r2.center().x() - r2.width()/4,
+                                 r2.center().y() - r2.height()/4,
+                                 r2.width()/2, r2.height()/2);
+
+            if (phy1.intersects(phy2)) {
+                // 计算两个中心点方向（单位向量）
                 QPointF diff = r1.center() - r2.center();
                 if (diff.x() == 0 && diff.y() == 0) diff = QPointF(1,0);
                 qreal len = sqrt(diff.x()*diff.x() + diff.y()*diff.y());
-                if (len == 0) continue;
                 diff /= len;
-                qreal overlap = (r1.width()/2 + r2.width()/2) - QLineF(r1.center(), r2.center()).length();
+
+                // 计算基于物理碰撞箱的推离重叠量
+                qreal overlap = (phy1.width()/2 + phy2.width()/2) -
+                                QLineF(phy1.center(), phy2.center()).length();
                 if (overlap > 0) {
-                    r1.translate(diff * overlap/2);
-                    r2.translate(-diff * overlap/2);
+                    r1.translate(diff * overlap / 2);
+                    r2.translate(-diff * overlap / 2);
                 }
             }
         }
