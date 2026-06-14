@@ -23,6 +23,12 @@ class PlayScene : public Scene {
 
 public:
     Q_PROPERTY(QRectF playerRect READ playerRect NOTIFY playerRectChanged);//暴露玩家坐标给qml直接读取,防止注册导致渲染错误
+    Q_INVOKABLE qreal playerX() const { return m_playerRect.x(); }
+    Q_INVOKABLE qreal playerY() const { return m_playerRect.y(); }
+    //标识移动还是禁止
+    Q_INVOKABLE qreal  isMoving() const { return m_moveDir.x() != 0 || m_moveDir.y() != 0; }
+    Q_INVOKABLE qreal  getAnimDir() const { return static_cast<int>(m_animDir); }
+
 public:
     explicit PlayScene(QObject* parent = nullptr);
     void onEnter() override;//进入场景后加载场景中障碍物的坐标,便于碰撞检测
@@ -37,6 +43,10 @@ public:
     void onKeyPress(Qt::Key key);
     void onKeyRelease(Qt::Key key);
     AnimDir animDirection() const { return m_animDir; }
+
+
+
+
 signals:
     void playerRectChanged();  // 必须在修改 m_playerRect 后发射
 
@@ -57,5 +67,6 @@ private:
     void updateMovement();  // 根据按键组合更新 m_moveDir 和 m_animDir
     bool m_left = false, m_right = false, m_up = false, m_down = false;
     AnimDir m_animDir = AnimDir::Idle;
+    AnimDir m_lastMoveDir = AnimDir::Right;  // 记录最后一次移动的方向，默认右
 
 };

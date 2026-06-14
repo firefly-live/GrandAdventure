@@ -105,56 +105,40 @@ bool PlayScene::collidesWithObstacles() const {
 #include <QDebug>  // 需要添加这个头文件
 
 void PlayScene::onKeyPress(Qt::Key key) {
-    // 打印按键按下信息
-    qDebug() << "按键按下:" << key;
-
     switch (key) {
-    case Qt::Key_Left:
-        qDebug() << "← 左键按下";
+    case Qt::Key_A:
         m_left = true;
         break;
-    case Qt::Key_Right:
-        qDebug() << "→ 右键按下";
+    case Qt::Key_D:
         m_right = true;
         break;
-    case Qt::Key_Up:
-        qDebug() << "↑ 上键按下";
+    case Qt::Key_W:
         m_up = true;
         break;
-    case Qt::Key_Down:
-        qDebug() << "↓ 下键按下";
+    case Qt::Key_S:
         m_down = true;
         break;
     default:
-        qDebug() << "其他按键:" << key;
         return;
     }
     updateMovement();
 }
 
 void PlayScene::onKeyRelease(Qt::Key key) {
-    // 打印按键释放信息
-    qDebug() << "按键释放:" << key;
-
     switch (key) {
-    case Qt::Key_Left:
-        qDebug() << "← 左键释放";
+    case Qt::Key_A:
         m_left = false;
         break;
-    case Qt::Key_Right:
-        qDebug() << "→ 右键释放";
+    case Qt::Key_D:
         m_right = false;
         break;
-    case Qt::Key_Up:
-        qDebug() << "↑ 上键释放";
+    case Qt::Key_W:
         m_up = false;
         break;
-    case Qt::Key_Down:
-        qDebug() << "↓ 下键释放";
+    case Qt::Key_S:
         m_down = false;
         break;
     default:
-        qDebug() << "其他按键释放:" << key;
         return;
     }
     updateMovement();
@@ -163,21 +147,24 @@ void PlayScene::onKeyRelease(Qt::Key key) {
 void PlayScene::updateMovement() {
     float dx = (m_right ? 1.f : 0.f) - (m_left ? 1.f : 0.f);
     float dy = (m_down ? 1.f : 0.f) - (m_up ? 1.f : 0.f);
-    // 归一化斜向
     if (dx != 0 && dy != 0) {
         float len = sqrt(dx*dx + dy*dy);
         dx /= len;
         dy /= len;
     }
     m_moveDir = QPointF(dx, dy);
-   //qDebug()<<"qx = "<<dx<<" dy = "<<dy;
-    // 确定动画方向（优先水平）
-    if (dx > 0) m_animDir = AnimDir::Right;
-    else if (dx < 0) m_animDir = AnimDir::Left;
-    else if (dy > 0) m_animDir = AnimDir::Down;
-    else if (dy < 0) m_animDir = AnimDir::Up;
-    else m_animDir = AnimDir::Idle;
+
+    // 根据是否有移动输入来决定动画方向
+    if (dx != 0 || dy != 0) {
+        // 正在移动，更新动画方向
+        if (dx > 0) m_animDir = AnimDir::Right;
+        else if (dx < 0) m_animDir = AnimDir::Left;
+        else if (dy > 0) m_animDir = AnimDir::Down;
+        else if (dy < 0) m_animDir = AnimDir::Up;
+        m_lastMoveDir = m_animDir;   // 记录最后一次移动方向
+    } else {
+        // 没有移动，使用最后一次移动方向（保持朝向）
+        m_animDir = m_lastMoveDir;
+    }
 }
-
-
 

@@ -11,6 +11,12 @@
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
+
+public:
+    //标识角色场景是移动还是禁止
+    Q_INVOKABLE int getAnimDir() const;
+    Q_INVOKABLE bool isMoving() const;
+
 public:
     MainWindow(QWidget* parent = nullptr);
     static MainWindow *instance();

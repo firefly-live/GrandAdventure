@@ -15,6 +15,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
 
     auto scene = dynamic_cast<PlayScene*>(SceneManager::instance()->findTypeScene(SceneType::Play));//获取游戏对象场景
     m_qmlWidget->rootContext()->setContextProperty("playScene", scene);//然后将游戏场景注册到qml中
+
+
+
     m_qmlWidget->setSource(QUrl("../../qml/GameCanvas.qml"));
 
     m_qmlRoot = static_cast<QObject*>(m_qmlWidget->rootObject());
@@ -45,4 +48,15 @@ void MainWindow::keyPressEvent(QKeyEvent* event) {
 void MainWindow::keyReleaseEvent(QKeyEvent* event) {
     auto scene = dynamic_cast<PlayScene*>(SceneManager::instance()->currentScene());
     if (scene) scene->onKeyRelease(Qt::Key(event->key()));
+}
+
+
+int MainWindow::getAnimDir() const {
+    auto scene = dynamic_cast<PlayScene*>(SceneManager::instance()->currentScene());
+    return scene ? scene->getAnimDir() : 0;
+}
+
+bool MainWindow::isMoving() const {
+    auto scene = dynamic_cast<PlayScene*>(SceneManager::instance()->currentScene());
+    return scene ? scene->isMoving() : false;
 }
