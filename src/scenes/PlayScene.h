@@ -8,8 +8,25 @@
 #include "../core/Scene.h"
 #include <QVector>
 #include <QRectF>
+
+//敌人的动态列表方向
+
+struct Enemy {
+    QRectF rect;
+    float speed;
+    int direction;      // 1左 2右
+    int frameIndex;     // 当前动画帧 (0~4)
+};
+
+
+
+
+
 //增加角色移动方位
 enum class AnimDir { Idle, Left, Right, Up, Down };
+
+
+
 
 
 
@@ -29,6 +46,12 @@ public:
     Q_INVOKABLE qreal  isMoving() const { return m_moveDir.x() != 0 || m_moveDir.y() != 0; }
     Q_INVOKABLE qreal  getAnimDir() const { return static_cast<int>(m_animDir); }
 
+
+    //--------------------------------------------------敌人类
+
+    Q_PROPERTY(QVariantList enemies READ enemies NOTIFY enemiesChanged);
+
+
 public:
     explicit PlayScene(QObject* parent = nullptr);
     void onEnter() override;//进入场景后加载场景中障碍物的坐标,便于碰撞检测
@@ -45,10 +68,18 @@ public:
     AnimDir animDirection() const { return m_animDir; }
 
 
+    //--------------------------------------------------敌人类
+
+    QVariantList enemies() const;
+
+
 
 
 signals:
     void playerRectChanged();  // 必须在修改 m_playerRect 后发射
+
+    //--------------------敌人出现
+    void enemiesChanged();
 
 private:
     void loadObstacles(const QString& path);
@@ -60,7 +91,7 @@ private:
     QVector<Obstacle> m_obstacles;  //场景中的碰撞障碍物
     QRectF m_playerRect;      // 玩家碰撞箱（位置+宽高）
     QPointF m_moveDir;        // 单位方向
-    float m_speed = 5.0f;
+    float m_speed = 4.0f;
 
 
 // 供 MainWindow 调用来设置移动方向--角色移动相关
@@ -68,5 +99,20 @@ private:
     bool m_left = false, m_right = false, m_up = false, m_down = false;
     AnimDir m_animDir = AnimDir::Idle;
     AnimDir m_lastMoveDir = AnimDir::Right;  // 记录最后一次移动的方向，默认右
+
+
+
+
+    //--------------------------------------------------敌人类
+    void updateEnemies(int deltaMs);    //更新敌人
+    void spawnEnemy();              //生成敌人
+    void avoidEnemyCollision();     //碰撞箱子
+    QList<Enemy> m_enemies;         //敌人列表
+    int m_enemySpawnCounter = 0;
+    float m_enemySpeed = 3.0f;      //敌人速度
+    mutable QVariantList m_enemiesCache;
+
+
+
 
 };

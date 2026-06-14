@@ -4,6 +4,11 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QDebug>
+#include<QLineF>
+#include <QRandomGenerator>
+#include <QPointF>
+#include <cmath>
+
 
 PlayScene::PlayScene(QObject* parent) : Scene(parent) {
     m_playerRect = QRectF(100, 100, 80, 80);
@@ -21,7 +26,19 @@ void PlayScene::update(int deltaMs) {
     movePlayer(delta);
 
 
+    //--------------------------------------------------敌人类
 
+    // 更新敌人
+    updateEnemies(deltaMs);
+
+    // 生成敌人（每60帧约1秒生成一个）
+    m_enemySpawnCounter++;
+    if (m_enemySpawnCounter > 60) {
+        m_enemySpawnCounter = 0;
+        spawnEnemy();
+    }
+
+    emit enemiesChanged(); // 通知 QML 刷新敌人列表
 
 }
 
@@ -168,3 +185,113 @@ void PlayScene::updateMovement() {
     }
 }
 
+
+
+
+
+
+
+
+
+
+
+////--------------------------------------------------敌人类
+void PlayScene::spawnEnemy() {
+    Enemy e;
+    e.speed = m_enemySpeed;
+    // 在地图边缘外生成（稍微偏移）
+    int side = QRandomGenerator::global()->bounded(4);
+    qreal x, y;
+    qreal w = m_mapBounds.width();
+    qreal h = m_mapBounds.height();
+    switch (side) {
+    case 0: x = QRandomGenerator::global()->bounded((int)w); y = -40; break;
+    case 1: x = w + 40; y = QRandomGenerator::global()->bounded((int)h); break;
+    case 2: x = QRandomGenerator::global()->bounded((int)w); y = h + 40; break;
+    default: x = -40; y = QRandomGenerator::global()->bounded((int)h); break;
+    }
+    e.rect = QRectF(x, y, 60, 60);  // 碰撞箱比玩家小（60x60）
+    e.direction = 2; // 默认右
+    e.frameIndex = 0;   // 从第0帧开始
+    m_enemies.append(e);
+
+}
+
+
+void PlayScene::updateEnemies(int deltaMs) {
+    Q_UNUSED(deltaMs);
+    for (auto& e : m_enemies) {
+        // 计算朝向玩家的方向向量
+        QPointF dir = m_playerRect.center() - e.rect.center();
+        qreal len = sqrt(dir.x()*dir.x() + dir.y()*dir.y());
+        if (len > 0) dir /= len;
+        QPointF delta = dir * e.speed;
+        QRectF newRect = e.rect.translated(delta);
+
+        // 边界限制（不能移出地图）
+        qreal minX = m_mapBounds.left();
+        qreal maxX = m_mapBounds.right() - e.rect.width();
+        qreal minY = m_mapBounds.top();
+        qreal maxY = m_mapBounds.bottom() - e.rect.height();
+        if (newRect.left() < minX) newRect.moveLeft(minX);
+        if (newRect.right() > maxX) newRect.moveRight(maxX);
+        if (newRect.top() < minY) newRect.moveTop(minY);
+        if (newRect.bottom() > maxY) newRect.moveBottom(maxY);
+        e.rect = newRect;
+
+        // 确定敌人的图片方向（面向玩家）
+        // 如果敌人在玩家左边，它应该朝右（direction=2）；在右边朝左（direction=1）
+        if (e.rect.center().x() < m_playerRect.center().x()) {
+            e.direction = 2; // 朝右
+        } else {
+            e.direction = 1; // 朝左
+        }
+    }
+
+    // 简单的敌人间碰撞避免（互相推开）
+    for (int i = 0; i < m_enemies.size(); ++i) {
+        for (int j = i+1; j < m_enemies.size(); ++j) {
+            QRectF& r1 = m_enemies[i].rect;
+            QRectF& r2 = m_enemies[j].rect;
+            if (r1.intersects(r2)) {
+                QPointF diff = r1.center() - r2.center();
+                if (diff.x() == 0 && diff.y() == 0) diff = QPointF(1,0);
+                qreal len = sqrt(diff.x()*diff.x() + diff.y()*diff.y());
+                if (len == 0) continue;
+                diff /= len;
+                qreal overlap = (r1.width()/2 + r2.width()/2) - QLineF(r1.center(), r2.center()).length();
+                if (overlap > 0) {
+                    r1.translate(diff * overlap/2);
+                    r2.translate(-diff * overlap/2);
+                }
+            }
+        }
+    }
+    static int accumMs = 0;
+    accumMs += deltaMs;
+    if (accumMs >= 80) {   // 每80ms切换一次帧
+        accumMs -= 80;
+        for (auto& e : m_enemies) {
+            e.frameIndex = (e.frameIndex + 1) % 5;   // 5帧
+        }
+        emit enemiesChanged();   // 通知QML刷新（因为帧索引变化）
+    }
+
+
+}
+
+
+QVariantList PlayScene::enemies() const {
+    m_enemiesCache.clear();
+    for (const Enemy& e : m_enemies) {
+        QVariantMap map;
+        map["x"] = e.rect.x();
+        map["y"] = e.rect.y();
+        map["width"] = e.rect.width();
+        map["height"] = e.rect.height();
+        map["direction"] = e.direction;
+        map["frameIndex"] = e.frameIndex;
+        m_enemiesCache.append(map);
+    }
+    return m_enemiesCache;
+}
