@@ -8,15 +8,18 @@
 #include "../core/Scene.h"
 #include <QVector>
 #include <QRectF>
+#include "../core/GameObject.h"
+#include "../gameobjects/Enemy.h"
 
+#include "../gameobjects/PaimonEnemy.h"
 //敌人的动态列表方向
 
-struct Enemy {
-    QRectF rect;
-    float speed;
-    int direction;      // 1左 2右
-    int frameIndex;     // 当前动画帧 (0~4)
-};
+// struct Enemy {
+//     QRectF rect;
+//     float speed;
+//     int direction;      // 1左 2右
+//     int frameIndex;     // 当前动画帧 (0~4)
+// };
 
 
 
@@ -49,7 +52,8 @@ public:
 
     //--------------------------------------------------敌人类
 
-    Q_PROPERTY(QVariantList enemies READ enemies NOTIFY enemiesChanged);
+    // Q_PROPERTY(QVariantList enemies READ enemies NOTIFY enemiesChanged);
+    Q_PROPERTY(QVariantList gameObjects READ gameObjects NOTIFY gameObjectsChanged);
 
 
 public:
@@ -66,26 +70,28 @@ public:
     void onKeyPress(Qt::Key key);
     void onKeyRelease(Qt::Key key);
     AnimDir animDirection() const { return m_animDir; }
+    bool collidesWithObstacles() const;
+    bool collidesWithObstacles(const QRectF& rect) const;//重载检测,用于测试敌人对障碍物碰撞
 
 
     //--------------------------------------------------敌人类
 
-    QVariantList enemies() const;
-
-
+    // QVariantList enemies() const;
+     QVariantList gameObjects() const;
+    QRectF mapBounds() const { return m_mapBounds; }
 
 
 signals:
     void playerRectChanged();  // 必须在修改 m_playerRect 后发射
 
     //--------------------敌人出现
-    void enemiesChanged();
+    // void enemiesChanged();
+     void gameObjectsChanged();
 
 private:
     void loadObstacles(const QString& path);
     void movePlayer(const QPointF& delta); //传入新坐标然后检测---防止玩家移动出地图
-    bool collidesWithObstacles() const;
-    bool collidesWithObstacles(const QRectF& rect) const;//重载检测,用于测试敌人对障碍物碰撞
+
 
     QRectF m_mapBounds;//地图边界操作
 
@@ -105,14 +111,20 @@ private:
 
 
     //--------------------------------------------------敌人类
-    void updateEnemies(int deltaMs);    //更新敌人--碰撞检测什么的
-    void spawnEnemy();              //生成敌人
-    void avoidEnemyCollision();     //碰撞箱子
-    QList<Enemy> m_enemies;         //敌人列表
-    int m_enemySpawnCounter = 0;
-    float m_enemySpeed = 3.0f;      //敌人速度
-    mutable QVariantList m_enemiesCache;
+    // void updateEnemies(int deltaMs);    //更新敌人--碰撞检测什么的
+    // void spawnEnemy();              //生成敌人
+    // void avoidEnemyCollision();     //碰撞箱子
+    // // QList<Enemy> m_enemies;         //敌人列表
+    // int m_enemySpawnCounter = 0;
+    // float m_enemySpeed = 1.0f;      //敌人速度
+    // mutable QVariantList m_enemiesCache;
 
+
+    QList<GameObject*> m_objects;
+    // 生成敌人时创建 PaimonEnemy 对象
+    void spawnEnemy();
+    void updateGameObjects(int deltaMs);
+    void handleCollisions();
 
 
 

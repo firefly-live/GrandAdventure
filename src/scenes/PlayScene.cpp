@@ -20,26 +20,26 @@ void PlayScene::onEnter() {
 }
 
 void PlayScene::update(int deltaMs) {
-
-    Q_UNUSED(deltaMs);
-    QPointF delta = m_moveDir * m_speed;  // m_speed = 5.f
+    // 1. 玩家移动
+    QPointF delta = m_moveDir * m_speed;
     movePlayer(delta);
 
+    // 2. 更新所有游戏对象（敌人）
+    updateGameObjects(deltaMs);
 
-    //--------------------------------------------------敌人类
-
-    // 更新敌人
-    updateEnemies(deltaMs);
-
-    // 生成敌人（每60帧约1秒生成一个）
-    m_enemySpawnCounter++;
-    if (m_enemySpawnCounter > 60) {
-        m_enemySpawnCounter = 0;
+    // 3. 生成新敌人（每60帧一次）
+    static int spawnCounter = 0;
+    spawnCounter++;
+    if (spawnCounter > 60) {
+        spawnCounter = 0;
         spawnEnemy();
     }
 
-    emit enemiesChanged(); // 通知 QML 刷新敌人列表
-
+    // 4. 通知QML敌人列表变化（已在 updateGameObjects 中发射，但为了位置变化也发射，可在此再次发射）
+    //    实际在 updateGameObjects 的帧动画部分已经发射，位置变化时如需刷新可在 movePlayer 后发射？但敌人位置变化由 update 推动，无需额外发射。
+    //    这里保持简洁，不移除原有逻辑但需要适配新信号
+    //    原代码有 emit enemiesChanged()，现在改为 emit gameObjectsChanged()，但注意频繁发射可能影响性能，可仅在敌人增删或帧变化时发射。
+    //    下面会在 updateGameObjects 中处理帧变化时发射，位置变化不额外发射。
 }
 
 void PlayScene::setMoveDirection(const QPointF& dir) {
@@ -202,11 +202,10 @@ void PlayScene::updateMovement() {
 
 
 
-////--------------------------------------------------敌人类
+// ================= 敌人管理（基于 GameObject） =================
+
 void PlayScene::spawnEnemy() {
-    Enemy e;
-    e.speed = m_enemySpeed;
-    // 在地图边缘外生成（稍微偏移）
+    // 计算生成位置
     int side = QRandomGenerator::global()->bounded(4);
     qreal x, y;
     qreal w = m_mapBounds.width();
@@ -217,100 +216,86 @@ void PlayScene::spawnEnemy() {
     case 2: x = QRandomGenerator::global()->bounded((int)w); y = h + 40; break;
     default: x = -40; y = QRandomGenerator::global()->bounded((int)h); break;
     }
-    e.rect = QRectF(x, y, 60, 60);  // 碰撞箱比玩家小（60x60）
-    e.direction = 2; // 默认右
-    e.frameIndex = 0;   // 从第0帧开始
-    m_enemies.append(e);
-
+    QRectF startRect(x, y, 60, 60);
+    // 创建 PaimonEnemy，传入 this 以便访问障碍物和边界
+    PaimonEnemy* enemy = new PaimonEnemy(startRect, this, this);
+    m_objects.append(enemy);
+    emit gameObjectsChanged();
 }
 
-
-void PlayScene::updateEnemies(int deltaMs) {
-    Q_UNUSED(deltaMs);
-    for (auto& e : m_enemies) {
-        // 计算朝向玩家的方向向量
-        QPointF dir = m_playerRect.center() - e.rect.center();
-        qreal len = sqrt(dir.x()*dir.x() + dir.y()*dir.y());
-        if (len > 0) dir /= len;
-        QPointF delta = dir * e.speed;
-        QRectF newRect = e.rect.translated(delta);
-
-        // 边界限制（不能移出地图）
-        qreal minX = m_mapBounds.left();
-        qreal maxX = m_mapBounds.right() - e.rect.width();
-        qreal minY = m_mapBounds.top();
-        qreal maxY = m_mapBounds.bottom() - e.rect.height();
-        if (newRect.left() < minX) newRect.moveLeft(minX);
-        if (newRect.right() > maxX) newRect.moveRight(maxX);
-        if (newRect.top() < minY) newRect.moveTop(minY);
-        if (newRect.bottom() > maxY) newRect.moveBottom(maxY);
-        e.rect = newRect;
-
-        // 确定敌人的图片方向（面向玩家）
-        // 如果敌人在玩家左边，它应该朝右（direction=2）；在右边朝左（direction=1）
-        if (e.rect.center().x() < m_playerRect.center().x()) {
-            e.direction = 2; // 朝右
-        } else {
-            e.direction = 1; // 朝左
-        }
+void PlayScene::updateGameObjects(int deltaMs) {
+    // 先更新所有对象的位置和逻辑
+    for (auto obj : m_objects) {
+        obj->update(deltaMs);
     }
 
-    // 简单的敌人间碰撞避免（互相推开）
-    for (int i = 0; i < m_enemies.size(); ++i) {
-        for (int j = i+1; j < m_enemies.size(); ++j) {
-            QRectF& r1 = m_enemies[i].rect;
-            QRectF& r2 = m_enemies[j].rect;
+    // 处理碰撞（敌人之间互相推开，敌人与障碍物已在 update 中处理）
+    handleCollisions();
 
-            // 计算物理碰撞箱（宽高各为原矩形的一半，中心不变）
-            QRectF phy1 = QRectF(r1.center().x() - r1.width()/4,
-                                 r1.center().y() - r1.height()/4,
-                                 r1.width()/2, r1.height()/2);
-            QRectF phy2 = QRectF(r2.center().x() - r2.width()/4,
-                                 r2.center().y() - r2.height()/4,
-                                 r2.width()/2, r2.height()/2);
+    // 统一更新帧动画（每80ms切换）
+    static int accumMs = 0;
+    accumMs += deltaMs;
+    if (accumMs >= 80) {
+        accumMs -= 80;
+        for (auto obj : m_objects) {
+            if (Enemy* e = dynamic_cast<Enemy*>(obj)) {
+                e->frameIndex = (e->frameIndex + 1) % 5;
+            }
+        }
+        emit gameObjectsChanged();  // 帧变化，通知 QML 刷新
+    }
+}
 
+void PlayScene::handleCollisions() {
+    // 敌人之间互相推开（基于物理碰撞箱，与旧逻辑相同）
+    QList<Enemy*> enemies;
+    for (auto obj : m_objects) {
+        if (Enemy* e = dynamic_cast<Enemy*>(obj)) {
+            enemies.append(e);
+        }
+    }
+    for (int i = 0; i < enemies.size(); ++i) {
+        for (int j = i+1; j < enemies.size(); ++j) {
+            QRectF r1 = enemies[i]->rect();
+            QRectF r2 = enemies[j]->rect();
+            // 物理碰撞箱（大小一半）
+            QRectF phy1(r1.center().x() - r1.width()/4,
+                        r1.center().y() - r1.height()/4,
+                        r1.width()/2, r1.height()/2);
+            QRectF phy2(r2.center().x() - r2.width()/4,
+                        r2.center().y() - r2.height()/4,
+                        r2.width()/2, r2.height()/2);
             if (phy1.intersects(phy2)) {
-                // 计算两个中心点方向（单位向量）
                 QPointF diff = r1.center() - r2.center();
                 if (diff.x() == 0 && diff.y() == 0) diff = QPointF(1,0);
                 qreal len = sqrt(diff.x()*diff.x() + diff.y()*diff.y());
                 diff /= len;
-
-                // 计算基于物理碰撞箱的推离重叠量
                 qreal overlap = (phy1.width()/2 + phy2.width()/2) -
                                 QLineF(phy1.center(), phy2.center()).length();
                 if (overlap > 0) {
                     r1.translate(diff * overlap / 2);
                     r2.translate(-diff * overlap / 2);
+                    enemies[i]->setRect(r1);
+                    enemies[j]->setRect(r2);
                 }
             }
         }
     }
-    static int accumMs = 0;
-    accumMs += deltaMs;
-    if (accumMs >= 80) {   // 每80ms切换一次帧
-        accumMs -= 80;
-        for (auto& e : m_enemies) {
-            e.frameIndex = (e.frameIndex + 1) % 5;   // 5帧
-        }
-        emit enemiesChanged();   // 通知QML刷新（因为帧索引变化）
-    }
-
-
 }
 
-
-QVariantList PlayScene::enemies() const {
-    m_enemiesCache.clear();
-    for (const Enemy& e : m_enemies) {
-        QVariantMap map;
-        map["x"] = e.rect.x();
-        map["y"] = e.rect.y();
-        map["width"] = e.rect.width();
-        map["height"] = e.rect.height();
-        map["direction"] = e.direction;
-        map["frameIndex"] = e.frameIndex;
-        m_enemiesCache.append(map);
+QVariantList PlayScene::gameObjects() const {
+    QVariantList list;
+    for (auto obj : m_objects) {
+        if (Enemy* e = dynamic_cast<Enemy*>(obj)) {
+            QVariantMap map;
+            map["x"] = e->rect().x();
+            map["y"] = e->rect().y();
+            map["width"] = e->rect().width();
+            map["height"] = e->rect().height();
+            map["direction"] = e->direction;
+            map["frameIndex"] = e->frameIndex;
+            list.append(map);
+        }
     }
-    return m_enemiesCache;
+    return list;
 }

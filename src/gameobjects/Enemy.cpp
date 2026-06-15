@@ -1,0 +1,3 @@
+#include "Enemy.h"
+Enemy::Enemy(QObject *parent) : GameObject(parent) {}
+void Enemy::setRect(const QRectF& r) { m_rect = r; emit rectChanged(); }
