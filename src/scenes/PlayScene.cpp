@@ -24,10 +24,9 @@ void PlayScene::update(int deltaMs) {
     QPointF delta = m_moveDir * m_speed;
     movePlayer(delta);
 
-    // 2. 更新所有游戏对象（敌人）
-    updateGameObjects(deltaMs);
+    //更新敌人操作
+    updateGameObjects(deltaMs);   // 包含了敌人更新、碰撞、帧动画和发射信号
 
-    // 3. 生成新敌人（每60帧一次）
     static int spawnCounter = 0;
     spawnCounter++;
     if (spawnCounter > 60) {
@@ -204,8 +203,9 @@ void PlayScene::updateMovement() {
 
 // ================= 敌人管理（基于 GameObject） =================
 
+// ================= 敌人管理（基于 GameObject） =================
+
 void PlayScene::spawnEnemy() {
-    // 计算生成位置
     int side = QRandomGenerator::global()->bounded(4);
     qreal x, y;
     qreal w = m_mapBounds.width();
@@ -217,22 +217,22 @@ void PlayScene::spawnEnemy() {
     default: x = -40; y = QRandomGenerator::global()->bounded((int)h); break;
     }
     QRectF startRect(x, y, 60, 60);
-    // 创建 PaimonEnemy，传入 this 以便访问障碍物和边界
     PaimonEnemy* enemy = new PaimonEnemy(startRect, this, this);
     m_objects.append(enemy);
-    emit gameObjectsChanged();
+    // 发射信号通知 QML 敌人列表新增（但下一帧会统一发射，也可以立即发射）
+    emit enemiesChanged();
 }
 
 void PlayScene::updateGameObjects(int deltaMs) {
-    // 先更新所有对象的位置和逻辑
+    // 1. 更新所有对象（移动、逻辑）
     for (auto obj : m_objects) {
         obj->update(deltaMs);
     }
 
-    // 处理碰撞（敌人之间互相推开，敌人与障碍物已在 update 中处理）
+    // 2. 处理碰撞（敌人之间互相推开）
     handleCollisions();
 
-    // 统一更新帧动画（每80ms切换）
+    // 3. 统一更新帧动画（每80ms切换）
     static int accumMs = 0;
     accumMs += deltaMs;
     if (accumMs >= 80) {
@@ -242,23 +242,25 @@ void PlayScene::updateGameObjects(int deltaMs) {
                 e->frameIndex = (e->frameIndex + 1) % 5;
             }
         }
-        emit gameObjectsChanged();  // 帧变化，通知 QML 刷新
     }
+
+    // 4. 每帧都发射信号，确保 QML 获取最新的位置和帧索引
+    emit enemiesChanged();
 }
 
 void PlayScene::handleCollisions() {
-    // 敌人之间互相推开（基于物理碰撞箱，与旧逻辑相同）
+    // 收集所有敌人
     QList<Enemy*> enemies;
     for (auto obj : m_objects) {
         if (Enemy* e = dynamic_cast<Enemy*>(obj)) {
             enemies.append(e);
         }
     }
+    // 两两碰撞推开（与原有逻辑相同）
     for (int i = 0; i < enemies.size(); ++i) {
         for (int j = i+1; j < enemies.size(); ++j) {
             QRectF r1 = enemies[i]->rect();
             QRectF r2 = enemies[j]->rect();
-            // 物理碰撞箱（大小一半）
             QRectF phy1(r1.center().x() - r1.width()/4,
                         r1.center().y() - r1.height()/4,
                         r1.width()/2, r1.height()/2);
@@ -283,7 +285,7 @@ void PlayScene::handleCollisions() {
     }
 }
 
-QVariantList PlayScene::gameObjects() const {
+QVariantList PlayScene::enemies() const {
     QVariantList list;
     for (auto obj : m_objects) {
         if (Enemy* e = dynamic_cast<Enemy*>(obj)) {

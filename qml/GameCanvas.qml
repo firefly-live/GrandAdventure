@@ -65,7 +65,7 @@ Rectangle {
 
     // ================= 敌人 =================
     Repeater {
-        model: playScene.gameObjects   // 改为使用 gameObjects
+        model: playScene.enemies   // 改为使用 gameObjects
         delegate: Item {
             Image {
                 width: modelData.width
@@ -77,6 +77,13 @@ Rectangle {
                     var frame = modelData.frameIndex
                     return "../Resource/role/paimeng/paimon_" + dirStr + "_" + frame + ".png"
                 }
+                // // 调试边框
+                //             Rectangle {
+                //                 anchors.fill: parent
+                //                 color: "transparent"
+                //                 border.color: "yellow"
+                //                 border.width: 2
+                //             }
             }
         }
     }

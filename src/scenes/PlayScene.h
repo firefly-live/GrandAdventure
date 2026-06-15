@@ -52,8 +52,8 @@ public:
 
     //--------------------------------------------------敌人类
 
-    // Q_PROPERTY(QVariantList enemies READ enemies NOTIFY enemiesChanged);
-    Q_PROPERTY(QVariantList gameObjects READ gameObjects NOTIFY gameObjectsChanged);
+    Q_PROPERTY(QVariantList enemies READ enemies NOTIFY enemiesChanged);
+   // Q_PROPERTY(QVariantList gameObjects READ gameObjects NOTIFY gameObjectsChanged);
 
 
 public:
@@ -85,8 +85,8 @@ signals:
     void playerRectChanged();  // 必须在修改 m_playerRect 后发射
 
     //--------------------敌人出现
-    // void enemiesChanged();
-     void gameObjectsChanged();
+   void enemiesChanged();
+     //void gameObjectsChanged();
 
 private:
     void loadObstacles(const QString& path);
@@ -121,6 +121,7 @@ private:
 
 
     QList<GameObject*> m_objects;
+    QVariantList enemies() const;   // 实现从 m_objects 过滤敌人
     // 生成敌人时创建 PaimonEnemy 对象
     void spawnEnemy();
     void updateGameObjects(int deltaMs);
