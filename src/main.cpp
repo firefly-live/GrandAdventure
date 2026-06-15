@@ -13,7 +13,7 @@ int main(int argc, char* argv[]) {
     SceneManager::instance()->registerScene(SceneType::Play, new PlayScene());
 
 
-
+ app.setOverrideCursor(QCursor(Qt::BlankCursor));
 
     //切换到游戏场景测试
      SceneManager::instance()->switchTo(SceneType::Play);

@@ -28,6 +28,9 @@ public:
     void keyPressEvent(QKeyEvent* event);//不同场景下对于按键触发有不同实现逻辑
     void keyReleaseEvent(QKeyEvent* event);//不同场景下对于按键触发有不同实现逻辑
 
+    //转发鼠标操作
+    void mousePressEvent(QMouseEvent* event);
+
 
 private:
     QQuickWidget* m_qmlWidget = nullptr;//加载aml显示对象

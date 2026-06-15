@@ -119,4 +119,26 @@ QML直接绑定playerRect.x/y。彻底避免直接属性赋值与事件循环竞
 ；QML侧移除不必要的帧索引重置逻辑，无条件每100ms递增一帧，确保动画连续
 
 
+血量反馈无更新：m_playerHp 改变后未发射 playerHpChanged 信号，导致 QML 血条不刷新。
+→ 在 handlePlayerCollision 中扣血后添加 emit playerHpChanged();。
+
+子弹击中敌人崩溃：handleCollisionsWithBullets 中直接 delete bullet 并 removeAt，且 enemy->takeDamage 内部可能直接 delete enemy，导致遍历时野指针。
+→ 改为标记删除：在 GameObject 中添加 m_markedForDelete，碰撞时仅标记，统一在 cleanupDeadObjects 中倒序遍历删除。
+
+子弹超出边界未删除：原代码仅在 cleanupDeadObjects 中删除超出边界的子弹，但未在每帧移动后及时清理。
+→ 保持现有逻辑，已在 update 中调用 cleanupDeadObjects。
+
+碰撞体积过大，未接触即掉血：玩家和敌人使用原始矩形（80x80/60x60）检测碰撞。
+→ 修改 handlePlayerCollision，将双方碰撞箱缩小为原宽高的一半（中心不变），使用缩小的矩形进行相交检测。
+
+QML 子弹不显示：bullets 属性虽定义，但 bulletsChanged 信号未发射。
+→ 在 updateGameObjects 每帧末尾添加 emit bulletsChanged();。
+
+子弹飞行过快难以调试：Bullet::m_speed 默认 10，可临时调低至 3~5 便于观察。
+
+玩家受击无闪白反馈：未实现，留作后续扩展。
+
+
+
+
 

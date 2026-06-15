@@ -1,4 +1,5 @@
 #include "PlayScene.h"
+#include"../core/SceneManager.h"
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonArray>
@@ -27,6 +28,15 @@ void PlayScene::update(int deltaMs) {
     //更新敌人操作
     updateGameObjects(deltaMs);   // 包含了敌人更新、碰撞、帧动画和发射信号
 
+    //更新碰撞操作
+    // 处理子弹与敌人碰撞
+    handleCollisionsWithBullets();
+    // 玩家与敌人碰撞（已有）
+    handlePlayerCollision();
+    // 清理死亡对象
+    cleanupDeadObjects();
+
+
     static int spawnCounter = 0;
     spawnCounter++;
     if (spawnCounter > 60) {
@@ -34,11 +44,7 @@ void PlayScene::update(int deltaMs) {
         spawnEnemy();
     }
 
-    // 4. 通知QML敌人列表变化（已在 updateGameObjects 中发射，但为了位置变化也发射，可在此再次发射）
-    //    实际在 updateGameObjects 的帧动画部分已经发射，位置变化时如需刷新可在 movePlayer 后发射？但敌人位置变化由 update 推动，无需额外发射。
-    //    这里保持简洁，不移除原有逻辑但需要适配新信号
-    //    原代码有 emit enemiesChanged()，现在改为 emit gameObjectsChanged()，但注意频繁发射可能影响性能，可仅在敌人增删或帧变化时发射。
-    //    下面会在 updateGameObjects 中处理帧变化时发射，位置变化不额外发射。
+
 }
 
 void PlayScene::setMoveDirection(const QPointF& dir) {
@@ -192,7 +198,59 @@ void PlayScene::updateMovement() {
 }
 
 
+// 在 update 中，玩家与敌人碰撞
+void PlayScene::handlePlayerCollision() {
+    // 玩家缩小后的碰撞箱（宽高各一半，中心不变）
+    QRectF playerCollisionRect(
+        m_playerRect.center().x() - m_playerRect.width() / 4,
+        m_playerRect.center().y() - m_playerRect.height() / 4,
+        m_playerRect.width() / 2,
+        m_playerRect.height() / 2
+        );
+    for (auto obj : m_objects) {
+        if (Enemy* e = dynamic_cast<Enemy*>(obj)) {
+            // 敌人缩小后的碰撞箱
+            QRectF enemyCollisionRect(
+                e->rect().center().x() - e->rect().width() / 4,
+                e->rect().center().y() - e->rect().height() / 4,
+                e->rect().width() / 2,
+                e->rect().height() / 2
+                );
+            if (playerCollisionRect.intersects(enemyCollisionRect)) {
+                m_playerHp -= 1000;
+                emit playerHpChanged();   // 需要添加这行，否则血条不更新
+                if (m_playerHp <= 0) {
+                    SceneManager::instance()->switchTo(SceneType::Death);
+                    return;
+                }
+                // 可选：将敌人弹开一段距离，避免连续碰撞
+                break;
+            }
+        }
+    }
+}
 
+// 处理子弹与敌人碰撞已在 Bullet::onCollision 中完成，但需要删除已死亡敌人和子弹
+void PlayScene::cleanupDeadObjects() {
+    for (int i = m_objects.size()-1; i >= 0; --i) {
+        GameObject* obj = m_objects[i];
+        if (Enemy* e = dynamic_cast<Enemy*>(obj)) {
+            if (e->hp <= 0) {
+                delete e;
+                m_objects.removeAt(i);
+                // 可以增加得分等
+            }
+        }
+        // 子弹已在碰撞中 deleteLater 移除，此处可额外处理超出边界的子弹
+        if (Bullet* b = dynamic_cast<Bullet*>(obj)) {
+            if (b->rect().x() < -100 || b->rect().x() > m_mapBounds.width()+100 ||
+                b->rect().y() < -100 || b->rect().y() > m_mapBounds.height()+100) {
+                b->deleteLater();
+                m_objects.removeAt(i);
+            }
+        }
+    }
+}
 
 
 
@@ -224,15 +282,15 @@ void PlayScene::spawnEnemy() {
 }
 
 void PlayScene::updateGameObjects(int deltaMs) {
-    // 1. 更新所有对象（移动、逻辑）
+    // 1. 更新所有对象
     for (auto obj : m_objects) {
         obj->update(deltaMs);
     }
 
-    // 2. 处理碰撞（敌人之间互相推开）
+    // 2. 敌人间碰撞
     handleCollisions();
 
-    // 3. 统一更新帧动画（每80ms切换）
+    // 3. 帧动画更新
     static int accumMs = 0;
     accumMs += deltaMs;
     if (accumMs >= 80) {
@@ -244,8 +302,9 @@ void PlayScene::updateGameObjects(int deltaMs) {
         }
     }
 
-    // 4. 每帧都发射信号，确保 QML 获取最新的位置和帧索引
-    emit enemiesChanged();
+    // 4. 发射信号通知 QML 更新
+    emit enemiesChanged();   // 敌人列表变化
+    emit bulletsChanged();   // 子弹列表变化 ← 添加这一行
 }
 
 void PlayScene::handleCollisions() {
@@ -296,6 +355,50 @@ QVariantList PlayScene::enemies() const {
             map["height"] = e->rect().height();
             map["direction"] = e->direction;
             map["frameIndex"] = e->frameIndex;
+            list.append(map);
+        }
+    }
+    return list;
+}
+
+//////-----------------------------------------------子弹射击类
+
+
+void PlayScene::shootBullet(const QPointF& target) {
+    QPointF direction = target - m_playerRect.center();
+    Bullet* bullet = new Bullet(m_playerRect.center(), direction, this);
+    m_objects.append(bullet); // 与敌人统一管理，方便碰撞检测
+    //qDebug()<<"bullt created";
+    // 也可单独列表，但统一管理简化碰撞
+}
+
+
+void PlayScene::handleCollisionsWithBullets() {
+    for (int i = 0; i < m_objects.size(); ++i) {
+        Bullet* bullet = dynamic_cast<Bullet*>(m_objects[i]);
+        if (!bullet) continue;
+        for (int j = 0; j < m_objects.size(); ++j) {
+            Enemy* enemy = dynamic_cast<Enemy*>(m_objects[j]);
+            if (!enemy) continue;
+            if (bullet->rect().intersects(enemy->rect())) {
+                // 子弹击中敌人
+                enemy->takeDamage(1000); // 伤害1000
+                // 标记子弹待删除
+                bullet->deleteLater();
+                m_objects.removeAt(i);
+                // 如果敌人死亡，将在 cleanupDeadObjects 中处理
+                break; // 子弹只击中一个敌人
+            }
+        }
+    }
+}
+QVariantList PlayScene::bullets() const {
+    QVariantList list;
+    for (auto obj : m_objects) {
+        if (Bullet* b = dynamic_cast<Bullet*>(obj)) {
+            QVariantMap map;
+            map["x"] = b->rect().x();
+            map["y"] = b->rect().y();
             list.append(map);
         }
     }

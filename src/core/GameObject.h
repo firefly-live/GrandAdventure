@@ -10,6 +10,11 @@
 class GameObject : public QObject {
     Q_OBJECT
     Q_PROPERTY(QRectF rect READ rect NOTIFY rectChanged)
+protected:
+    bool m_markedForDelete = false;
+public:
+    bool isMarkedForDelete() const { return m_markedForDelete; }
+    void markForDelete() { m_markedForDelete = true; }
 public:
     explicit GameObject(QObject *parent = nullptr);
     virtual ~GameObject();

@@ -18,6 +18,11 @@ public:
     float speed = 1.0f;
     int direction = 2;   // 1左2右
     int frameIndex = 0;
+
+
+    // 反馈交互
+    int hp = 1000;
+    void takeDamage(int damage);
 protected:
     QRectF m_rect;
 };

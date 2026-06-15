@@ -12,6 +12,7 @@
 #include "../gameobjects/Enemy.h"
 
 #include "../gameobjects/PaimonEnemy.h"
+#include "../gameobjects/Bullet.h"
 //敌人的动态列表方向
 
 // struct Enemy {
@@ -49,6 +50,15 @@ public:
     Q_INVOKABLE qreal  isMoving() const { return m_moveDir.x() != 0 || m_moveDir.y() != 0; }
     Q_INVOKABLE qreal  getAnimDir() const { return static_cast<int>(m_animDir); }
 
+    Q_PROPERTY(int playerHp READ playerHp NOTIFY playerHpChanged)
+
+
+    //--------------------------------------------子弹类
+    Q_PROPERTY(QVariantList bullets READ bullets NOTIFY bulletsChanged)
+    QVariantList bullets() const;
+
+    Q_INVOKABLE void shootBullet(const QPointF& target);//射击敌人
+
 
     //--------------------------------------------------敌人类
 
@@ -60,7 +70,9 @@ public:
     void onEnter() override;//进入场景后加载场景中障碍物的坐标,便于碰撞检测
     void update(int deltaMs) override;
     void draw() override {}
-
+    int playerHp() const { return m_playerHp; }
+    bool collidesWithObstacles() const;
+    bool collidesWithObstacles(const QRectF& rect) const;//重载检测,用于测试敌人对障碍物碰撞
 
 
     // 供 MainWindow 调用来设置移动方向--角色移动相关
@@ -69,9 +81,6 @@ public:
     void onKeyPress(Qt::Key key);
     void onKeyRelease(Qt::Key key);
     AnimDir animDirection() const { return m_animDir; }
-    bool collidesWithObstacles() const;
-    bool collidesWithObstacles(const QRectF& rect) const;//重载检测,用于测试敌人对障碍物碰撞
-
 
     //--------------------------------------------------敌人类
 
@@ -81,8 +90,12 @@ public:
 
 
 signals:
-    void playerRectChanged();  // 必须在修改 m_playerRect 后发射
 
+    //-----------子弹类
+     void bulletsChanged();
+
+    void playerRectChanged();  // 必须在修改 m_playerRect 后发射
+  void playerHpChanged();
     //--------------------敌人出现
    void enemiesChanged();
 
@@ -106,6 +119,8 @@ private:
     AnimDir m_animDir = AnimDir::Idle;
     AnimDir m_lastMoveDir = AnimDir::Right;  // 记录最后一次移动的方向，默认右
 
+    void handlePlayerCollision();
+    void cleanupDeadObjects();
 
 
 
@@ -119,6 +134,13 @@ private:
     void spawnEnemy();
     void updateGameObjects(int deltaMs);
     void handleCollisions();
+
+
+    //-------------------------------子弹射击类
+    // 成员
+    QList<GameObject*> m_bullets;  // 或统一放入 m_objects，但为了方便独立管理
+    int m_playerHp = 1000;
+void handleCollisionsWithBullets(); // 处理子弹与敌人碰撞
 
 
 

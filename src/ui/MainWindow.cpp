@@ -51,6 +51,16 @@ void MainWindow::keyReleaseEvent(QKeyEvent* event) {
 }
 
 
+void MainWindow::mousePressEvent(QMouseEvent* event) {
+    if (event->button() == Qt::LeftButton) {
+        auto current = SceneManager::instance()->currentScene();
+        if (PlayScene* scene = dynamic_cast<PlayScene*>(current)) {
+            // 将鼠标坐标转换为游戏世界坐标（需根据实际映射）
+            scene->shootBullet(event->pos()); // 具体转换省略
+        }
+    }
+}
+
 int MainWindow::getAnimDir() const {
     auto scene = dynamic_cast<PlayScene*>(SceneManager::instance()->currentScene());
     return scene ? scene->getAnimDir() : 0;

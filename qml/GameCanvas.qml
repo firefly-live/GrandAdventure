@@ -32,6 +32,28 @@ Rectangle {
         }
     }
 
+
+    //血量
+    Rectangle {
+        width: 200
+        height: 30
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: 20
+        color: "red"
+        border.color: "black"
+        Rectangle {
+            width: playScene.playerHp / 1000.0 * parent.width
+            height: parent.height
+            color: "green"
+        }
+        Text {
+            anchors.centerIn: parent
+            text: playScene.playerHp + " / 1000"
+            color: "white"
+            font.bold: true
+        }
+    }
+
     property int playerFrameIndex: 0
     property int playerAnimDir: 0
     property bool playerMoving: false
@@ -63,6 +85,55 @@ Rectangle {
         playerImage.source = "../Resource/role/hajimi/" + fileName
     }
 
+
+    //射击的指针
+
+    MouseArea {
+        id: mouseArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.BlankCursor   // 隐藏系统光标
+
+        Item {
+            id: crosshair
+            width: 20
+            height: 20
+            visible: true
+            z: 100
+            // 移除 x/y 绑定，改为在 onPositionChanged 中设置
+            Rectangle {
+                width: 2; height: 20; color: "#80FF0000"; anchors.centerIn: parent; rotation: 45
+            }
+            Rectangle {
+                width: 2; height: 20; color: "#80FF0000"; anchors.centerIn: parent; rotation: -45
+            }
+        }
+
+        onPositionChanged: {
+            crosshair.x = mouseX - 10
+            crosshair.y = mouseY - 10
+        }
+        onClicked: {
+            playScene.shootBullet(Qt.point(mouseX, mouseY))
+        }
+    }
+
+
+    Repeater {
+        model: playScene.bullets
+        delegate: Rectangle {
+            width: 8
+            height: 8
+            radius: 4
+            color: "yellow"
+            x: modelData.x
+            y: modelData.y
+        }
+    }
+
+
+
+
     // ================= 敌人 =================
     Repeater {
         model: playScene.enemies   // 改为使用 gameObjects
@@ -87,4 +158,8 @@ Rectangle {
             }
         }
     }
+
+
+
+
 }
