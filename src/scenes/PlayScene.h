@@ -53,7 +53,6 @@ public:
     //--------------------------------------------------敌人类
 
     Q_PROPERTY(QVariantList enemies READ enemies NOTIFY enemiesChanged);
-   // Q_PROPERTY(QVariantList gameObjects READ gameObjects NOTIFY gameObjectsChanged);
 
 
 public:
@@ -86,7 +85,7 @@ signals:
 
     //--------------------敌人出现
    void enemiesChanged();
-     //void gameObjectsChanged();
+
 
 private:
     void loadObstacles(const QString& path);
@@ -111,13 +110,7 @@ private:
 
 
     //--------------------------------------------------敌人类
-    // void updateEnemies(int deltaMs);    //更新敌人--碰撞检测什么的
-    // void spawnEnemy();              //生成敌人
-    // void avoidEnemyCollision();     //碰撞箱子
-    // // QList<Enemy> m_enemies;         //敌人列表
-    // int m_enemySpawnCounter = 0;
-    // float m_enemySpeed = 1.0f;      //敌人速度
-    // mutable QVariantList m_enemiesCache;
+
 
 
     QList<GameObject*> m_objects;

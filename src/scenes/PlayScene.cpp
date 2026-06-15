@@ -203,7 +203,7 @@ void PlayScene::updateMovement() {
 
 // ================= 敌人管理（基于 GameObject） =================
 
-// ================= 敌人管理（基于 GameObject） =================
+
 
 void PlayScene::spawnEnemy() {
     int side = QRandomGenerator::global()->bounded(4);
