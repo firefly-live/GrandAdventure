@@ -4,21 +4,21 @@
 
 Bullet::Bullet(const QPointF& startPos, const QPointF& direction, QObject* parent)
     : GameObject(parent) {
-    m_rect = QRectF(startPos.x(), startPos.y(), 10, 10);
-    // 归一化方向
-    float len = sqrt(direction.x()*direction.x() + direction.y()*direction.y());
+
+    m_rect = QRectF(startPos.x() - 5, startPos.y() - 5, 10, 10);
+    float len = std::hypot(direction.x(), direction.y());
     if (len > 0) {
-        m_velocity = direction / len * m_speed;
+        QPointF dir = direction / len;
+        m_velocity = dir * m_speed;
     } else {
         m_velocity = QPointF(0,0);
     }
 }
 
 void Bullet::update(int deltaMs) {
-    Q_UNUSED(deltaMs);
-    m_rect.translate(m_velocity);
-    // 超出边界则标记删除（由 PlayScene 处理）
-    // 简单超出地图边界销毁（可后续添加）
+    float dt = deltaMs / 1000.0f;          // 转换为秒
+    m_rect.translate(m_velocity * dt);     // 速度（像素/秒）× 时间（秒）
+    emit rectChanged();
 }
 
 void Bullet::onCollision(GameObject* other) {
@@ -30,4 +30,10 @@ void Bullet::onCollision(GameObject* other) {
             delete this;
         }
     }
+}
+
+
+int  Bullet::takeDamage(){
+    int damage = m_damage;
+    return damage;
 }

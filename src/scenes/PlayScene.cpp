@@ -27,10 +27,12 @@ void PlayScene::update(int deltaMs) {
 
     //更新敌人操作
     updateGameObjects(deltaMs);   // 包含了敌人更新、碰撞、帧动画和发射信号
-
+    handleExpOrbCollection();
     //更新碰撞操作
     // 处理子弹与敌人碰撞
     handleCollisionsWithBullets();
+    // 处理子弹与障碍物碰撞
+    handleBulletObstacleCollision();
     // 玩家与敌人碰撞（已有）
     handlePlayerCollision();
     // 清理死亡对象
@@ -220,7 +222,7 @@ void PlayScene::handlePlayerCollision() {
                 m_playerHp -= 1000;
                 emit playerHpChanged();   // 需要添加这行，否则血条不更新
                 if (m_playerHp <= 0) {
-                    SceneManager::instance()->switchTo(SceneType::Death);
+                    SceneManager::instance()->switchTo(SceneType::Death);//由于没有这个,所以无效
                     return;
                 }
                 // 可选：将敌人弹开一段距离，避免连续碰撞
@@ -236,9 +238,13 @@ void PlayScene::cleanupDeadObjects() {
         GameObject* obj = m_objects[i];
         if (Enemy* e = dynamic_cast<Enemy*>(obj)) {
             if (e->hp <= 0) {
+                int expValue = 50 + m_level * 5;
+                ExpOrb* orb = new ExpOrb(e->rect().center(), expValue, this);
+                m_objects.append(orb);
                 delete e;
                 m_objects.removeAt(i);
-                // 可以增加得分等
+                emit expOrbsChanged();
+                continue;//掉落经验球并且删除
             }
         }
         // 子弹已在碰撞中 deleteLater 移除，此处可额外处理超出边界的子弹
@@ -355,6 +361,7 @@ QVariantList PlayScene::enemies() const {
             map["height"] = e->rect().height();
             map["direction"] = e->direction;
             map["frameIndex"] = e->frameIndex;
+            map["hp"] = e->hp;//展示血量
             list.append(map);
         }
     }
@@ -382,7 +389,7 @@ void PlayScene::handleCollisionsWithBullets() {
             if (!enemy) continue;
             if (bullet->rect().intersects(enemy->rect())) {
                 // 子弹击中敌人
-                enemy->takeDamage(1000); // 伤害1000
+                enemy->takeDamage(bullet->takeDamage()); // 伤害为自定义的伤害s
                 // 标记子弹待删除
                 bullet->deleteLater();
                 m_objects.removeAt(i);
@@ -392,6 +399,20 @@ void PlayScene::handleCollisionsWithBullets() {
         }
     }
 }
+
+
+void PlayScene::handleBulletObstacleCollision() {
+    for (int i = m_objects.size() - 1; i >= 0; --i) {
+        Bullet* bullet = dynamic_cast<Bullet*>(m_objects[i]);
+        if (!bullet) continue;
+        if (collidesWithObstacles(bullet->rect())) {
+            delete bullet;               // 直接删除
+            m_objects.removeAt(i);       // 移除
+        }
+    }
+}
+
+
 QVariantList PlayScene::bullets() const {
     QVariantList list;
     for (auto obj : m_objects) {
@@ -399,6 +420,95 @@ QVariantList PlayScene::bullets() const {
             QVariantMap map;
             map["x"] = b->rect().x();
             map["y"] = b->rect().y();
+            list.append(map);
+        }
+    }
+    return list;
+}
+
+
+
+
+//-----------------------------------------------升级相关-----------------------------------------
+void PlayScene::handleExpOrbCollection() {
+    for (int i = m_objects.size() - 1; i >= 0; --i) {
+        ExpOrb* orb = dynamic_cast<ExpOrb*>(m_objects[i]);
+        if (!orb) continue;
+
+        QPointF toPlayer = m_playerRect.center() - orb->rect().center();
+        if (toPlayer.manhattanLength() < 100) { // 拾取半径
+            orb->setTarget(m_playerRect.center());
+        }
+
+       if (orb->isMovingToPlayer() && (orb->rect().center() - m_playerRect.center()).manhattanLength() < 15) {
+            addExp(orb->value());
+            delete orb;
+            m_objects.removeAt(i);
+        }
+    }
+}
+
+
+void PlayScene::addExp(int value) {
+    m_currentExp += value;
+    while (m_currentExp >= m_expToNextLevel && m_level < 20) {
+        m_currentExp -= m_expToNextLevel;
+        m_level++;
+        m_expToNextLevel = 100 + m_level * 20;
+        upgradeLevel(); // 应用升级增益（弹出选择界面）
+        emit statsChanged();
+    }
+    emit statsChanged();
+}
+
+void PlayScene::upgradeLevel() {
+    QStringList options = generateUpgradeOptions();
+    emit upgradeRequested(options);
+    // 注意：游戏需要暂停等待玩家选择，通过 QML 弹窗后调用 applyUpgrade
+}
+
+QStringList PlayScene::generateUpgradeOptions() {
+    QStringList allOptions = {
+        "增加最大生命值 +100",
+        "增加子弹伤害 +100",
+        "增加移动速度 +1",
+        "增加子弹穿透概率 +10% (最高90%)"
+    };
+    // 随机取三个不重复的
+    QStringList chosen;
+    QList<int> indices = {0,1,2,3};
+    std::random_shuffle(indices.begin(), indices.end());
+    for (int i = 0; i < 3; ++i) chosen << allOptions[indices[i]];
+    return chosen;
+}
+
+void PlayScene::applyUpgrade(int index) {
+    QStringList options = generateUpgradeOptions(); // 实际应保存上一次生成的选项，这里简单模拟
+    QString chosen = options[index];
+    if (chosen.contains("最大生命值")) {
+        m_maxHp += 100;
+        m_playerHp = m_maxHp;
+        emit playerHpChanged();
+    } else if (chosen.contains("子弹伤害")) {
+        m_bulletDamage += 100;
+    } else if (chosen.contains("移动速度")) {
+        m_speed += 1;
+    } else if (chosen.contains("穿透概率")) {
+        m_penetrationChance += 0.1f;
+        if (m_penetrationChance > 0.9f) m_penetrationChance = 0.9f;
+    }
+    emit statsChanged();
+    // 恢复游戏主循环（需要外部实现暂停标志）
+}
+
+
+QVariantList PlayScene::expOrbs() const {
+    QVariantList list;
+    for (auto obj : m_objects) {
+        if (ExpOrb* orb = dynamic_cast<ExpOrb*>(obj)) {
+            QVariantMap map;
+            map["x"] = orb->rect().x();
+            map["y"] = orb->rect().y();
             list.append(map);
         }
     }

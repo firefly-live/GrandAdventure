@@ -1,5 +1,5 @@
 import QtQuick 2.0
-
+import QtQuick.Controls
 Rectangle {
     width: 1625
     height: 968
@@ -121,13 +121,12 @@ Rectangle {
 
     Repeater {
         model: playScene.bullets
-        delegate: Rectangle {
-            width: 8
-            height: 8
-            radius: 4
-            color: "yellow"
-            x: modelData.x
-            y: modelData.y
+        delegate: Image {
+            width: 30    // 根据图片尺寸调整
+            height: 30
+            source: "../Resource/weapen/sun/sun_ex.png"
+            x: modelData.x - width/2   // 使图片中心对齐子弹坐标
+            y: modelData.y - height/2
         }
     }
 
@@ -155,10 +154,95 @@ Rectangle {
                 //                 border.color: "yellow"
                 //                 border.width: 2
                 //             }
+                Text {
+                            text: modelData.hp
+                            color: "red"
+                            font.pixelSize: 14
+                            font.bold: true
+                            anchors.bottom: parent.top
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            visible: modelData.hp < 1000  // 只要不是满血就显示，即被击中后
+                        }
             }
         }
     }
 
+
+
+
+    //==============================================升级相关
+    Rectangle {
+        id: upgradePanel
+        anchors.fill: parent
+        color: "#AA000000"
+        visible: false
+        z: 200
+        Column {
+            anchors.centerIn: parent
+            spacing: 20
+            Text { text: "升级！选择一项能力"; color: "white"; font.pixelSize: 24 }
+            Row {
+                spacing: 20
+                Button {
+                    id: btn1
+                    width: 180; height: 40
+                    background: Rectangle { color: "lightblue"; radius: 5 }
+                    contentItem: Text { text: btn1.text; anchors.centerIn: parent }
+                    onClicked: { playScene.applyUpgrade(0); upgradePanel.visible = false; }
+                }
+                Button {
+                    id: btn2
+                    width: 180; height: 40
+                    background: Rectangle { color: "lightblue"; radius: 5 }
+                    contentItem: Text { text: btn2.text; anchors.centerIn: parent }
+                    onClicked: { playScene.applyUpgrade(1); upgradePanel.visible = false; }
+                }
+                Button {
+                    id: btn3
+                    width: 180; height: 40
+                    background: Rectangle { color: "lightblue"; radius: 5 }
+                    contentItem: Text { text: btn3.text; anchors.centerIn: parent }
+                    onClicked: { playScene.applyUpgrade(2); upgradePanel.visible = false; }
+                }
+            }
+        }
+        Connections {
+            target: playScene
+            function onUpgradeRequested(options) {
+                btn1.text = options[0];
+                btn2.text = options[1];
+                btn3.text = options[2];
+                upgradePanel.visible = true;
+            }
+        }
+    }
+
+    Rectangle {
+        x: 20; y: 20
+        width: 200; height: 20
+        color: "gray"
+        Rectangle {
+            width: (playScene.currentExp * 1.0 / playScene.expToNext) * parent.width
+            height: parent.height
+            color: "blue"
+        }
+        Text {
+            text: "Lv." + playScene.level + " " + playScene.currentExp + "/" + playScene.expToNext
+            anchors.centerIn: parent
+            color: "white"
+            font.pixelSize: 12
+        }
+    }
+
+
+    //----------------经验求
+    Repeater {
+        model: playScene.expOrbs
+        delegate: Rectangle {
+            width: 10; height: 10; color: "gold"
+            x: modelData.x; y: modelData.y
+        }
+    }
 
 
 

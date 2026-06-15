@@ -13,6 +13,9 @@
 
 #include "../gameobjects/PaimonEnemy.h"
 #include "../gameobjects/Bullet.h"
+#include<QVariantMap>
+
+#include "../gameobjects/ExpOrb.h"
 //敌人的动态列表方向
 
 // struct Enemy {
@@ -53,16 +56,40 @@ public:
     Q_PROPERTY(int playerHp READ playerHp NOTIFY playerHpChanged)
 
 
-    //--------------------------------------------子弹类
+    //--------------------------------------------子弹类----------------------------------
     Q_PROPERTY(QVariantList bullets READ bullets NOTIFY bulletsChanged)
     QVariantList bullets() const;
 
     Q_INVOKABLE void shootBullet(const QPointF& target);//射击敌人
 
 
-    //--------------------------------------------------敌人类
+    //--------------------------------------------------敌人类---------------------------
 
     Q_PROPERTY(QVariantList enemies READ enemies NOTIFY enemiesChanged);
+
+
+
+    //-----------------------------------------------升级相关-----------------------------------------
+    Q_PROPERTY(int level READ level NOTIFY statsChanged)
+    Q_PROPERTY(int currentExp READ currentExp NOTIFY statsChanged)
+    Q_PROPERTY(int expToNext READ expToNext NOTIFY statsChanged)
+    Q_PROPERTY(float bulletDamage READ bulletDamage NOTIFY statsChanged)
+    Q_PROPERTY(float speed READ speed NOTIFY statsChanged)
+    Q_PROPERTY(float penetrationChance READ penetrationChance NOTIFY statsChanged)
+
+    Q_PROPERTY(QVariantList expOrbs READ expOrbs NOTIFY expOrbsChanged)
+    QVariantList expOrbs()  const;
+
+
+
+    int level() const { return m_level; }
+    int currentExp() const { return m_currentExp; }
+    int expToNext() const { return m_expToNextLevel; }
+    float bulletDamage() const { return m_bulletDamage; }
+    float speed() const { return m_speed; }
+    float penetrationChance() const { return m_penetrationChance; }
+    Q_INVOKABLE void applyUpgrade(int index); // 由QML调用
+
 
 
 public:
@@ -99,6 +126,11 @@ signals:
     //--------------------敌人出现
    void enemiesChanged();
 
+  //-----------------------------------------------升级相关-----------------------------------------
+   void statsChanged();
+   void upgradeRequested(const QStringList& options); // 通知QML弹出升级选择
+    void expOrbsChanged();
+
 
 private:
     void loadObstacles(const QString& path);
@@ -124,7 +156,7 @@ private:
 
 
 
-    //--------------------------------------------------敌人类
+    //--------------------------------------------------敌人类--------------------------------------------
 
 
 
@@ -136,12 +168,28 @@ private:
     void handleCollisions();
 
 
-    //-------------------------------子弹射击类
+    //-------------------------------子弹射击类-----------------------------------------------------
     // 成员
     QList<GameObject*> m_bullets;  // 或统一放入 m_objects，但为了方便独立管理
     int m_playerHp = 1000;
-void handleCollisionsWithBullets(); // 处理子弹与敌人碰撞
+    void handleCollisionsWithBullets(); // 处理子弹与敌人碰撞
+    void handleBulletObstacleCollision(); //子弹和障碍物
+//-----------------------------------------------升级相关-----------------------------------------
 
+    void addExp(int value);
+    void handleExpOrbCollection();
+    QStringList generateUpgradeOptions();
+    void upgradeLevel(); // 升级核心逻辑
+    bool m_upgradePanelOpen = false;
 
+    // 玩家属性
+    int m_level = 1;
+    int m_currentExp = 0;
+    int m_expToNextLevel = 120; // 100 + level*20
+    int m_maxHp = 1000;
+    float m_bulletDamage = 1000.0f;
+    float m_penetrationChance = 0.0f; // 0~1
+     QStringList m_currentUpgradeOptions;   // 存储当前升级的三个选项
 
 };
+

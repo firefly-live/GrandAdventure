@@ -27,6 +27,7 @@ GrandAdventure/                         # 项目根目录
 │   │   ├── Weapon.h/cpp                # 武器基类：冷却时间、攻击方法、生成子弹
 │   │   ├── SurroundWeapon.h/cpp        # 具体武器：环绕玩家旋转，自动攻击附近敌人
 │   │   └── Bullet.h/cpp                # 子弹：直线移动，命中后消失并造成伤害
+|   |   |___ExpOrb.h/cpp
 │   │
 │   ├── ui/                             # 界面层（QWidget 捕获输入，QML 渲染显示）
 │   │   ├── MainWindow.h/cpp            # 主窗口（继承QMainWindow），重写keyPressEvent捕获键盘输入
