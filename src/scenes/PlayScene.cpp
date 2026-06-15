@@ -444,6 +444,7 @@ void PlayScene::handleExpOrbCollection() {
             addExp(orb->value());
             delete orb;
             m_objects.removeAt(i);
+             emit expOrbsChanged();   // 添加这一行，通知 QML 刷新
         }
     }
 }
