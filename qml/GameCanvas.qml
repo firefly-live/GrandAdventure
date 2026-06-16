@@ -13,13 +13,39 @@ Rectangle {
     }
 
     // ================= 玩家 =================
-    Image {
-        id: playerImage
+    Item {
+        id: playerContainer
         width: 80
         height: 80
         x: 0
         y: 0
+
+        Image {
+            id: playerImage
+            width: 80
+            height: 80
+            anchors.fill: parent
+            source: "../Resource/role/hajimi/hajimi_idle_right_1.png" // 初始图片
+        }
+
+        Timer {
+            id: blinkTimer
+            interval: 150
+            running: playScene.invincible
+            repeat: true
+            onTriggered: {
+                playerContainer.opacity = (playerContainer.opacity === 1.0) ? 0.2 : 1.0
+            }
+            onRunningChanged: {
+                if (!running) playerContainer.opacity = 1.0
+            }
+
+        }
+        Text { text: "无敌: " + playScene.invincible; color: "white"; x: 10; y: 50 }
     }
+
+
+
 
     // 玩家位置更新
     Timer {
@@ -27,8 +53,7 @@ Rectangle {
         running: true
         repeat: true
         onTriggered: {
-            playerImage.x = playScene.playerX()
-            playerImage.y = playScene.playerY()
+            playerContainer.x = playScene.playerX(); playerContainer.y = playScene.playerY();
         }
     }
 
@@ -216,17 +241,22 @@ Rectangle {
         }
     }
 
+    //经验条显示
+
     Rectangle {
+        id: expBar
         x: 20; y: 20
         width: 200; height: 20
         color: "gray"
+
         Rectangle {
-            width: (playScene.currentExp * 1.0 / playScene.expToNext) * parent.width
+            width: (playScene.level >= 20) ? parent.width : (playScene.currentExp * 1.0 / playScene.expToNext) * parent.width
             height: parent.height
             color: "blue"
         }
+
         Text {
-            text: "Lv." + playScene.level + " " + playScene.currentExp + "/" + playScene.expToNext
+            text: (playScene.level >= 20) ? "MAX" : "Lv." + playScene.level + " " + playScene.currentExp + "/" + playScene.expToNext
             anchors.centerIn: parent
             color: "white"
             font.pixelSize: 12

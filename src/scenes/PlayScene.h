@@ -16,6 +16,8 @@
 #include<QVariantMap>
 
 #include "../gameobjects/ExpOrb.h"
+
+#include<QTimer>
 //敌人的动态列表方向
 
 // struct Enemy {
@@ -46,6 +48,12 @@ class PlayScene : public Scene {
     Q_OBJECT
 
 public:
+
+    //闪烁查看
+    Q_PROPERTY(bool invincible READ isInvincible NOTIFY invincibleChanged);
+    bool isInvincible() const { return m_invincible; }
+
+
     Q_PROPERTY(QRectF playerRect READ playerRect NOTIFY playerRectChanged);//暴露玩家坐标给qml直接读取,防止注册导致渲染错误
     Q_INVOKABLE qreal playerX() const { return m_playerRect.x(); }
     Q_INVOKABLE qreal playerY() const { return m_playerRect.y(); }
@@ -125,6 +133,12 @@ public:
 
 signals:
 
+
+    void invincibleChanged(bool);
+
+
+
+
     //-----------子弹类
      void bulletsChanged();
 
@@ -151,6 +165,9 @@ private:
     QPointF m_moveDir;        // 单位方向
     float m_speed = 5.0f;
 
+    bool m_invincible = false;
+    QTimer* m_invincibleTimer;
+    void startInvincible();
 
 // 供 MainWindow 调用来设置移动方向--角色移动相关
     void updateMovement();  // 根据按键组合更新 m_moveDir 和 m_animDir
@@ -196,8 +213,8 @@ private:
     int m_currentExp = 0;
     int m_expToNextLevel = 120; // 100 + level*20
     int m_maxHp = 1000;
-    int m_bulletDamage = 100;
-    float m_penetrationChance = 0.0f; // 0~1
+    int m_bulletDamage = 1000;
+    float m_penetrationChance = 1.0f; // 0~1
      QStringList m_currentUpgradeOptions;   // 存储当前升级的三个选项
        bool m_isUpgrading = false;
 };

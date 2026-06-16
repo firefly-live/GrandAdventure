@@ -12,6 +12,16 @@
 
 
 PlayScene::PlayScene(QObject* parent) : Scene(parent) {
+
+
+    m_invincibleTimer = new QTimer(this);
+    m_invincibleTimer->setSingleShot(true);
+    connect(m_invincibleTimer, &QTimer::timeout, [this]() {
+        m_invincible = false;
+        emit invincibleChanged(false);   // 需要添加信号
+    });
+
+
     m_playerRect = QRectF(100, 100, 80, 80);
 }
 
@@ -219,9 +229,14 @@ void PlayScene::handlePlayerCollision() {
                 e->rect().width() / 2,
                 e->rect().height() / 2
                 );
-            if (playerCollisionRect.intersects(enemyCollisionRect)) {
+            if (!m_invincible &&playerCollisionRect.intersects(enemyCollisionRect)) {
                 m_playerHp -= 1000;
                 emit playerHpChanged();   // 需要添加这行，否则血条不更新
+
+                // 启动无敌帧
+               startInvincible();  // 启动无敌闪烁
+
+
                 if (m_playerHp <= 0) {
                     SceneManager::instance()->switchTo(SceneType::Death);//由于没有这个,所以无效
                     return;
@@ -465,6 +480,12 @@ void PlayScene::handleExpOrbCollection() {
 
 
 void PlayScene::addExp(int value) {
+    if (m_level >= 20) {
+        // 满级后不再增加经验，可丢弃经验球（或显示提示）
+        return;
+    }
+
+
     m_currentExp += value;
     while (m_currentExp >= m_expToNextLevel && m_level < 20) {
         m_currentExp -= m_expToNextLevel;
@@ -547,4 +568,12 @@ void PlayScene::setUpgrading(bool upgrading) {
         // 恢复游戏时重新隐藏光标
         QApplication::setOverrideCursor(QCursor(Qt::BlankCursor));
     }
+}
+
+
+void PlayScene::startInvincible() {
+    if (m_invincible) return;
+    m_invincible = true;
+    emit invincibleChanged(true);
+    m_invincibleTimer->start(2000);  // 2秒无敌
 }
