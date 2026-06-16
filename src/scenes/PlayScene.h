@@ -94,6 +94,11 @@ public:
     int maxHp() const { return m_maxHp; }
 
 
+    //----------------------------------------暂停相关
+    void setUpgrading(bool upgrading);
+    bool isUpgrading() const { return m_isUpgrading;}
+
+
 
 public:
     explicit PlayScene(QObject* parent = nullptr);
@@ -194,6 +199,6 @@ private:
     int m_bulletDamage = 100;
     float m_penetrationChance = 0.0f; // 0~1
      QStringList m_currentUpgradeOptions;   // 存储当前升级的三个选项
-
+       bool m_isUpgrading = false;
 };
 

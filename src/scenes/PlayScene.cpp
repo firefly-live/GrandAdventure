@@ -21,6 +21,7 @@ void PlayScene::onEnter() {
 }
 
 void PlayScene::update(int deltaMs) {
+     if (m_isUpgrading) return;  // 升级中，不更新任何游戏逻辑
     // 1. 玩家移动
     QPointF delta = m_moveDir * m_speed;
     movePlayer(delta);
@@ -476,6 +477,7 @@ void PlayScene::addExp(int value) {
 }
 
 void PlayScene::upgradeLevel() {
+     setUpgrading(true);
     QStringList options = generateUpgradeOptions();
     emit upgradeRequested(options);
      m_currentUpgradeOptions = options;
@@ -498,7 +500,7 @@ QStringList PlayScene::generateUpgradeOptions() {
 }
 
 void PlayScene::applyUpgrade(int index) {
-    QStringList options = m_currentUpgradeOptions; // 实际应保存上一次生成的选项，这里简单模拟
+    QStringList options = m_currentUpgradeOptions; // 实际应保存上一次生成的选项
     QString chosen = options[index];
     if (chosen.contains("最大生命值")) {
         m_maxHp += 100;
@@ -513,7 +515,7 @@ void PlayScene::applyUpgrade(int index) {
         if (m_penetrationChance > 0.9f) m_penetrationChance = 0.9f;
     }
     emit statsChanged();
-    // 恢复游戏主循环（需要外部实现暂停标志）
+     setUpgrading(false);   // 恢复游戏主循环（需要外部实现暂停标志）
 }
 
 
@@ -528,4 +530,21 @@ QVariantList PlayScene::expOrbs() const {
         }
     }
     return list;
+}
+
+
+
+#include <QApplication>
+#include <QCursor>
+
+void PlayScene::setUpgrading(bool upgrading) {
+    if (m_isUpgrading == upgrading) return;
+    m_isUpgrading = upgrading;
+    if (m_isUpgrading) {
+        // 升级弹窗时恢复鼠标光标（因为全局隐藏了）
+        QApplication::restoreOverrideCursor();
+    } else {
+        // 恢复游戏时重新隐藏光标
+        QApplication::setOverrideCursor(QCursor(Qt::BlankCursor));
+    }
 }
