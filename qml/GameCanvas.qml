@@ -159,9 +159,22 @@ Rectangle {
 
     // ================= 敌人 =================
     Repeater {
-        model: playScene.enemies   // 改为使用 gameObjects
+        model: playScene.enemies
         delegate: Item {
+            // 阴影（与敌人图片同级）
             Image {
+                source: "../Resource/role/paimeng/shadow.png"
+                width: modelData.width * 0.6          // 宽度为敌人的 60%
+                height: modelData.height * 0.15       // 高度为敌人的 15%（扁平）
+                x: modelData.x + (modelData.width - width) / 2   // 水平居中
+                y: modelData.y + modelData.height - height+10       // 位于角色脚下
+                opacity:1
+                z: 0
+            }
+
+            // 敌人图片
+            Image {
+                id: paimong
                 width: modelData.width
                 height: modelData.height
                 x: modelData.x
@@ -171,22 +184,20 @@ Rectangle {
                     var frame = modelData.frameIndex
                     return "../Resource/role/paimeng/paimon_" + dirStr + "_" + frame + ".png"
                 }
-                // // 调试边框
-                //             Rectangle {
-                //                 anchors.fill: parent
-                //                 color: "transparent"
-                //                 border.color: "yellow"
-                //                 border.width: 2
-                //             }
-                Text {
-                            text: modelData.hp
-                            color: "red"
-                            font.pixelSize: 14
-                            font.bold: true
-                            anchors.bottom: parent.top
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            visible: modelData.hp < 1000  // 只要不是满血就显示，即被击中后
-                        }
+                opacity: modelData.isDying ? (Math.floor(Date.now() / 100) % 2 === 0 ? 0.3 : 1.0) : 1.0
+                z: 1
+            }
+
+            // 血量文字（保持在最上层）
+            Text {
+                text: modelData.hp
+                color: "red"
+                font.pixelSize: 14
+                font.bold: true
+                anchors.bottom: paimong.top   // 直接锚定到敌人图片
+                anchors.horizontalCenter: paimong.horizontalCenter
+                visible: modelData.hp < 1000
+                z: 2
             }
         }
     }

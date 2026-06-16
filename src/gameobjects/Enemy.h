@@ -23,6 +23,27 @@ public:
     // 反馈交互
     int hp = 1000;
     void takeDamage(int damage);
+
 protected:
     QRectF m_rect;
+
+
+    //敌人死亡状态
+
+public:
+    void startDeath(int durationMs = 500);
+    bool isDying() const { return m_isDying; }
+    bool isReadyToDelete() const { return m_readyToDelete; }
+    bool isAlive() const { return !m_isDying && !m_readyToDelete; }
+protected:
+    void updateDeath(int deltaMs); // 在子类 update 中调用
+    bool m_isDying = false;
+    bool m_readyToDelete = false;
+    int m_deathTimer = 0;
+
+
+
+
+
+
 };

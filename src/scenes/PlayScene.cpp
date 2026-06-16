@@ -222,6 +222,8 @@ void PlayScene::handlePlayerCollision() {
         );
     for (auto obj : m_objects) {
         if (Enemy* e = dynamic_cast<Enemy*>(obj)) {
+            // 新增：如果敌人已死亡（正在播放死亡动画或已标记删除），则跳过
+            if (!e->isAlive()) continue;
             // 敌人缩小后的碰撞箱
             QRectF enemyCollisionRect(
                 e->rect().center().x() - e->rect().width() / 4,
@@ -253,14 +255,15 @@ void PlayScene::cleanupDeadObjects() {
     for (int i = m_objects.size()-1; i >= 0; --i) {
         GameObject* obj = m_objects[i];
         if (Enemy* e = dynamic_cast<Enemy*>(obj)) {
-            if (e->hp <= 0) {
+            if (e->isReadyToDelete()) {
+                // 生成经验球
                 int expValue = 50 + m_level * 5;
                 ExpOrb* orb = new ExpOrb(e->rect().center(), expValue, this);
                 m_objects.append(orb);
+                emit expOrbsChanged();
                 delete e;
                 m_objects.removeAt(i);
-                emit expOrbsChanged();
-                continue;//掉落经验球并且删除
+                continue;
             }
         }
         // 子弹已在碰撞中 deleteLater 移除，此处可额外处理超出边界的子弹
@@ -378,6 +381,7 @@ QVariantList PlayScene::enemies() const {
             map["direction"] = e->direction;
             map["frameIndex"] = e->frameIndex;
             map["hp"] = e->hp;//展示血量
+            map["isDying"] = e->isDying();//暴露死亡
             list.append(map);
         }
     }
@@ -407,8 +411,15 @@ void PlayScene::handleCollisionsWithBullets() {
         for (int j = 0; j < m_objects.size(); ++j) {
             Enemy* enemy = dynamic_cast<Enemy*>(m_objects[j]);
             if (!enemy) continue;
+            // 跳过已死亡（正在播放死亡动画或已标记删除）的敌人
+            if (!enemy->isAlive()) continue;
+
             if (bullet->rect().intersects(enemy->rect())) {
                 enemy->takeDamage(m_bulletDamage);
+                if (enemy->hp <= 0 && !enemy->isDying()) {
+                    enemy->startDeath(500);   // 启动死亡闪烁
+                }
+
                 hit = true;
                 // 穿透逻辑
                 if (bullet->canPenetrate()) {

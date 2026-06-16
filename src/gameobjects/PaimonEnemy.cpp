@@ -11,6 +11,13 @@ PaimonEnemy::PaimonEnemy(const QRectF& startRect, PlayScene* scene, QObject *par
 }
 
 void PaimonEnemy::update(int deltaMs) {
+    updateDeath(deltaMs);
+    if (m_isDying || m_readyToDelete) {
+        // 死亡状态不移动
+        return;
+    }
+
+
     Q_UNUSED(deltaMs);
     if (!m_scene) return;
 

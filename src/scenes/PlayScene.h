@@ -213,7 +213,7 @@ private:
     int m_currentExp = 0;
     int m_expToNextLevel = 120; // 100 + level*20
     int m_maxHp = 1000;
-    int m_bulletDamage = 1000;
+    int m_bulletDamage = 100;
     float m_penetrationChance = 1.0f; // 0~1
      QStringList m_currentUpgradeOptions;   // 存储当前升级的三个选项
        bool m_isUpgrading = false;
