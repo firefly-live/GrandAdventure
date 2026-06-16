@@ -90,6 +90,9 @@ public:
     float penetrationChance() const { return m_penetrationChance; }
     Q_INVOKABLE void applyUpgrade(int index); // 由QML调用
 
+    Q_PROPERTY(int maxHp READ maxHp NOTIFY statsChanged)
+    int maxHp() const { return m_maxHp; }
+
 
 
 public:
@@ -112,7 +115,6 @@ public:
     //--------------------------------------------------敌人类
 
     // QVariantList enemies() const;
-     QVariantList gameObjects() const;
     QRectF mapBounds() const { return m_mapBounds; }
 
 
@@ -170,7 +172,7 @@ private:
 
     //-------------------------------子弹射击类-----------------------------------------------------
     // 成员
-    QList<GameObject*> m_bullets;  // 或统一放入 m_objects，但为了方便独立管理
+
     int m_playerHp = 1000;
     void handleCollisionsWithBullets(); // 处理子弹与敌人碰撞
     void handleBulletObstacleCollision(); //子弹和障碍物
@@ -180,15 +182,17 @@ private:
     void handleExpOrbCollection();
     QStringList generateUpgradeOptions();
     void upgradeLevel(); // 升级核心逻辑
-    bool m_upgradePanelOpen = false;
+
+
+
 
     // 玩家属性
     int m_level = 1;
     int m_currentExp = 0;
     int m_expToNextLevel = 120; // 100 + level*20
     int m_maxHp = 1000;
-    float m_bulletDamage = 1000.0f;
-    float m_penetrationChance = 1.0f; // 0~1
+    int m_bulletDamage = 100;
+    float m_penetrationChance = 0.0f; // 0~1
      QStringList m_currentUpgradeOptions;   // 存储当前升级的三个选项
 
 };

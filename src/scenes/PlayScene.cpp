@@ -392,7 +392,7 @@ void PlayScene::handleCollisionsWithBullets() {
             Enemy* enemy = dynamic_cast<Enemy*>(m_objects[j]);
             if (!enemy) continue;
             if (bullet->rect().intersects(enemy->rect())) {
-                enemy->takeDamage(bullet->takeDamage());
+                enemy->takeDamage(m_bulletDamage);
                 hit = true;
                 // 穿透逻辑
                 if (bullet->canPenetrate()) {
@@ -478,6 +478,7 @@ void PlayScene::addExp(int value) {
 void PlayScene::upgradeLevel() {
     QStringList options = generateUpgradeOptions();
     emit upgradeRequested(options);
+     m_currentUpgradeOptions = options;
     // 注意：游戏需要暂停等待玩家选择，通过 QML 弹窗后调用 applyUpgrade
 }
 
@@ -497,7 +498,7 @@ QStringList PlayScene::generateUpgradeOptions() {
 }
 
 void PlayScene::applyUpgrade(int index) {
-    QStringList options = generateUpgradeOptions(); // 实际应保存上一次生成的选项，这里简单模拟
+    QStringList options = m_currentUpgradeOptions; // 实际应保存上一次生成的选项，这里简单模拟
     QString chosen = options[index];
     if (chosen.contains("最大生命值")) {
         m_maxHp += 100;

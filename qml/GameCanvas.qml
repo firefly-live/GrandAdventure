@@ -35,20 +35,19 @@ Rectangle {
 
     //血量
     Rectangle {
-        width: 200
-        height: 30
+        width: 200; height: 30
         anchors.horizontalCenter: parent.horizontalCenter
         y: 20
         color: "red"
         border.color: "black"
         Rectangle {
-            width: playScene.playerHp / 1000.0 * parent.width
+            width: (playScene.playerHp * 1.0 / playScene.maxHp) * parent.width
             height: parent.height
             color: "green"
         }
         Text {
             anchors.centerIn: parent
-            text: playScene.playerHp + " / 1000"
+            text: playScene.playerHp + " / " + playScene.maxHp
             color: "white"
             font.bold: true
         }
