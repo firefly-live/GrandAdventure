@@ -11,6 +11,7 @@ public:
     void onCollision(GameObject* other) override;
     int takeDamage();
 
+     // 穿透相关
     void setPenetrationChance(float chance) { m_penetrationChance = chance; }
     void setPenetrationCount(int count) { m_remainingPenetrations = count; }
     bool canPenetrate() const { return m_remainingPenetrations > 0; }

@@ -373,33 +373,46 @@ QVariantList PlayScene::enemies() const {
 
 void PlayScene::shootBullet(const QPointF& target) {
     QPointF direction = target - m_playerRect.center();
+    if (std::hypot(direction.x(), direction.y()) < 0.1f) return;
     Bullet* bullet = new Bullet(m_playerRect.center(), direction, this);
-    m_objects.append(bullet); // 与敌人统一管理，方便碰撞检测
-    //qDebug()<<"bullt created";
-    // 也可单独列表，但统一管理简化碰撞
+    // 设置穿透概率和次数
+    bullet->setPenetrationChance(m_penetrationChance);
+    int penetrationCount = (QRandomGenerator::global()->generateDouble() < m_penetrationChance) ? 2 : 0;
+    bullet->setPenetrationCount(penetrationCount);
+    m_objects.append(bullet);
 }
-
 
 void PlayScene::handleCollisionsWithBullets() {
     for (int i = 0; i < m_objects.size(); ++i) {
         Bullet* bullet = dynamic_cast<Bullet*>(m_objects[i]);
         if (!bullet) continue;
+
+        bool hit = false;
         for (int j = 0; j < m_objects.size(); ++j) {
             Enemy* enemy = dynamic_cast<Enemy*>(m_objects[j]);
             if (!enemy) continue;
             if (bullet->rect().intersects(enemy->rect())) {
-                // 子弹击中敌人
-                enemy->takeDamage(bullet->takeDamage()); // 伤害为自定义的伤害s
-                // 标记子弹待删除
-                bullet->deleteLater();
-                m_objects.removeAt(i);
-                // 如果敌人死亡，将在 cleanupDeadObjects 中处理
-                break; // 子弹只击中一个敌人
+                enemy->takeDamage(bullet->takeDamage());
+                hit = true;
+                // 穿透逻辑
+                if (bullet->canPenetrate()) {
+                    bullet->usePenetration();   // 消耗一次穿透次数
+                    // 继续飞行，不删除子弹，跳出内层循环检查下一个敌人（同一帧可能击中多个）
+                    // 注意：这里不 break，因为同一颗子弹可能需要穿透后继续检测同一帧的其他敌人
+                    // 但为简单起见，每帧只处理一次击中，后续帧会继续检测
+                    break;
+                } else {
+                    // 无法穿透，标记删除
+                    delete bullet;
+                    m_objects.removeAt(i);
+                    i--; // 调整索引
+                    break;
+                }
             }
         }
+        // 注意：若穿透且击中了敌人，子弹未删除，继续后续循环
     }
 }
-
 
 void PlayScene::handleBulletObstacleCollision() {
     for (int i = m_objects.size() - 1; i >= 0; --i) {

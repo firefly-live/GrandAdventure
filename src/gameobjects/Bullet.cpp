@@ -5,6 +5,7 @@
 Bullet::Bullet(const QPointF& startPos, const QPointF& direction, QObject* parent)
     : GameObject(parent) {
 
+     // 子弹矩形：10x10，中心对齐起始点
     m_rect = QRectF(startPos.x() - 5, startPos.y() - 5, 10, 10);
     float len = std::hypot(direction.x(), direction.y());
     if (len > 0) {
