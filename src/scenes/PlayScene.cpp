@@ -36,6 +36,38 @@ PlayScene::PlayScene(QObject* parent) : Scene(parent) {
     });
 
 
+    // E技能定时器：控制持续时间
+    // 机枪发射定时器
+    m_machineGunFireTimer = new QTimer(this);
+    m_machineGunFireTimer->setInterval(m_machineGunFireInterval);
+    connect(m_machineGunFireTimer, &QTimer::timeout, [this]() {
+        fireOneBulletTowardsDirection();   // 每50ms发射一颗
+    });
+
+    // 持续计时器
+    m_machineGunTimer = new QTimer(this);
+    m_machineGunTimer->setSingleShot(true);
+    connect(m_machineGunTimer, &QTimer::timeout, [this]() {
+        m_machineGunActive = false;
+        m_machineGunFireTimer->stop();
+        emit machineGunReadyChanged();
+    });
+
+    // 冷却计时器
+    m_machineGunCooldownTimer = new QTimer(this);
+    m_machineGunCooldownTimer->setSingleShot(true);
+    connect(m_machineGunCooldownTimer, &QTimer::timeout, [this]() {
+        m_machineGunReady = true;
+        emit machineGunReadyChanged();
+        emit machineGunCooldownUpdated(); // 最后更新一次
+    });
+
+    // 冷却更新定时器（每100ms通知QML更新剩余时间）
+    m_machineGunCooldownUpdateTimer = new QTimer(this);
+    m_machineGunCooldownUpdateTimer->setInterval(100);
+    connect(m_machineGunCooldownUpdateTimer, &QTimer::timeout, [this]() {
+        emit machineGunCooldownUpdated();
+    });
 
 
 
@@ -178,8 +210,11 @@ void PlayScene::onKeyPress(Qt::Key key) {
     case Qt::Key_S:
         m_down = true;
         break;
-    case Qt::Key_F:
+    case Qt::Key_E:
         castSkill();
+        break;
+    case Qt::Key_Q:
+        castMachineGun();
         break;
     default:
         return;
@@ -656,4 +691,68 @@ void PlayScene::castSkill() {
     emit skillReadyChanged();
     emit skillCooldownUpdated();
     // 可选：发射后发射一个声音或特效，但不强制
+}
+
+
+//技能实现机枪
+void PlayScene::fireOneBulletTowardsDirection() {
+    // 获取角色朝向方向
+    QPointF dir = m_moveDir;
+    if (dir.manhattanLength() < 0.01f) {
+        // 静止时使用最后一次移动方向
+        switch (m_lastMoveDir) {
+        case AnimDir::Right: dir = QPointF(1, 0); break;
+        case AnimDir::Left:  dir = QPointF(-1, 0); break;
+        case AnimDir::Up:    dir = QPointF(0, -1); break;
+        case AnimDir::Down:  dir = QPointF(0, 1); break;
+        default: dir = QPointF(1, 0);
+        }
+    }
+    float len = std::hypot(dir.x(), dir.y());
+    if (len > 0) dir /= len;
+
+    // 计算扇形角度范围（弧度）
+    float halfAngle = (m_machineGunSpreadAngle / 2.0f) * M_PI / 180.0f;
+    int count = m_machineGunBulletsPerBurst;
+    QPointF center = m_playerRect.center();
+
+    for (int i = 0; i < count; ++i) {
+        // 在 -halfAngle 到 +halfAngle 之间均匀分布
+        float t = (count > 1) ? (float)i / (count - 1) : 0.5f; // 0~1
+        float angle = -halfAngle + t * 2.0f * halfAngle;
+        // 旋转方向向量
+        float cosA = std::cos(angle);
+        float sinA = std::sin(angle);
+        QPointF rotatedDir(dir.x() * cosA - dir.y() * sinA,
+                           dir.x() * sinA + dir.y() * cosA);
+        // 发射子弹
+        Bullet* bullet = new Bullet(center, rotatedDir, this);
+        // 可设置子弹速度、伤害等
+        m_objects.append(bullet);
+    }
+}
+
+
+void PlayScene::castMachineGun() {
+    if (!m_machineGunReady || m_machineGunActive) return;
+
+    m_machineGunActive = true;
+    m_machineGunReady = false;
+    emit machineGunReadyChanged();
+
+    // 启动持续计时器（2秒后结束）
+    m_machineGunTimer->start(m_machineGunDuration);
+    // 启动发射定时器（每50ms一发）
+    m_machineGunFireTimer->start();
+    // 启动冷却计时器（3秒后技能恢复）
+    m_machineGunCooldownTimer->start(m_machineGunCooldown);
+    // 启动冷却更新定时器
+    m_machineGunCooldownUpdateTimer->start();
+}
+
+int PlayScene::machineGunCooldownRemaining() const {
+    if (m_machineGunCooldownTimer->isActive()) {
+        return m_machineGunCooldownTimer->remainingTime();
+    }
+    return 0;
 }

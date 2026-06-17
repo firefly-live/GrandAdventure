@@ -89,6 +89,7 @@ Rectangle {
         width: 200; height: 30
         anchors.horizontalCenter: parent.horizontalCenter
         y: 20
+        z:10
         color: "red"
         border.color: "black"
         Rectangle {
@@ -166,20 +167,19 @@ Rectangle {
 
         // 技能图标
         Image {
-            source: "../Resource/role/hajimi/fire_na_ho.png"
+            source: "../Resource/role/hajimi/attack_e.png"
             anchors.fill: parent
             anchors.margins: 10
             fillMode: Image.PreserveAspectFit
             opacity: playScene.skillReady ? 1.0 : 0.5
         }
 
-        // 冷却遮罩（旋转/扇形遮罩，表示冷却进度）
+        // 冷却遮罩（扇形）
         Rectangle {
             anchors.fill: parent
             color: "transparent"
             border.color: "transparent"
 
-            // 使用 Canvas 绘制扇形冷却进度
             Canvas {
                 id: cooldownCanvas
                 anchors.fill: parent
@@ -204,17 +204,17 @@ Rectangle {
             }
         }
 
-        // 冷却剩余时间文字
+        // 提示文字（始终可见）
         Text {
             anchors.centerIn: parent
-            text: playScene.skillReady ? "F" : Math.ceil(playScene.skillCooldownRemaining / 1000) + "s"
+            text: playScene.skillReady ? "E" : Math.ceil(playScene.skillCooldownRemaining / 1000) + "s"
             color: "white"
             font.bold: true
             font.pixelSize: 18
-            visible: !playScene.skillReady
+            // 移除了 visible: !playScene.skillReady
         }
 
-        // 鼠标点击触发技能（或仅显示，按键F触发即可）
+        // 点击也可触发（按键F为主，鼠标辅助）
         MouseArea {
             anchors.fill: parent
             onClicked: {
@@ -276,6 +276,79 @@ Rectangle {
         }
     }
 
+
+
+    // ================= Q技能按钮（右下角，F技能左侧） =================
+    Item {
+        id: machineGunButton
+        width: 80
+        height: 80
+        anchors.right: skillButton.left
+        anchors.bottom: parent.bottom
+        anchors.margins: 30
+        anchors.rightMargin: 20
+
+        Rectangle {
+            anchors.fill: parent
+            radius: width/2
+            color: "#333333"
+            border.color: "white"
+            border.width: 2
+        }
+
+        Image {
+            source: "../Resource/role/hajimi/attack_q.png"
+            anchors.fill: parent
+            anchors.margins: 10
+            fillMode: Image.PreserveAspectFit
+            opacity: playScene.machineGunReady ? 1.0 : 0.5
+        }
+
+        // 冷却遮罩
+        Rectangle {
+            anchors.fill: parent
+            color: "transparent"
+            Canvas {
+                id: eCooldownCanvas
+                anchors.fill: parent
+                visible: !playScene.machineGunReady
+                onPaint: {
+                    var ctx = getContext("2d")
+                    ctx.clearRect(0, 0, width, height)
+                    var centerX = width/2
+                    var centerY = height/2
+                    var radius = width/2
+                    var progress = (playScene.machineGunCooldownRemaining > 0) ? (playScene.machineGunCooldownRemaining / playScene.machineGunCooldownMs) : 0.0
+                    var startAngle = -Math.PI/2
+                    var endAngle = startAngle + (1 - progress) * 2 * Math.PI
+                    ctx.beginPath()
+                    ctx.moveTo(centerX, centerY)
+                    ctx.arc(centerX, centerY, radius, startAngle, endAngle)
+                    ctx.closePath()
+                    ctx.fillStyle = "#AA000000"
+                    ctx.fill()
+                }
+            }
+        }
+
+        // 提示文字（始终可见）
+        Text {
+            anchors.centerIn: parent
+            text: playScene.machineGunReady ? "q" : Math.ceil(playScene.machineGunCooldownRemaining / 1000) + "s"
+            color: "white"
+            font.bold: true
+            font.pixelSize: 18
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: {
+                if (playScene.machineGunReady) {
+                    playScene.castMachineGun()
+                }
+            }
+        }
+    }
     // ================= 敌人 =================
     Repeater {
         model: playScene.enemies
@@ -385,6 +458,7 @@ Rectangle {
     Rectangle {
         id: expBar
         x: 20; y: 20
+        z:10
         width: 200; height: 20
         color: "gray"
 

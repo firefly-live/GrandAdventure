@@ -120,6 +120,21 @@ public:
     bool isSkillReady() const { return m_skillReady; }
     int skillCooldownRemaining() const { return m_skillCooldownRemaining; }
 
+
+    // E技能相关
+    Q_PROPERTY(bool machineGunReady READ isMachineGunReady NOTIFY machineGunReadyChanged)
+    bool isMachineGunReady() const { return m_machineGunReady; }
+
+    Q_INVOKABLE void castMachineGun();   // 触发技能
+
+    void fireOneBulletTowardsDirection();
+
+    Q_PROPERTY(int machineGunCooldownRemaining READ machineGunCooldownRemaining NOTIFY machineGunCooldownUpdated)
+    Q_PROPERTY(int machineGunCooldown READ machineGunCooldown CONSTANT)
+
+    int machineGunCooldownRemaining() const;
+    int machineGunCooldown() const { return m_machineGunCooldown; }
+
     // ======================== 暂停/升级状态 ========================
     //----------------------------------------暂停相关
     void setUpgrading(bool upgrading);
@@ -156,6 +171,10 @@ signals:
     //------------------技能散射
     void skillReadyChanged();
     void skillCooldownUpdated();
+
+    void machineGunReadyChanged();
+
+    void machineGunCooldownUpdated();
 
 private:
     // ======================== 内部方法 ========================
@@ -221,4 +240,24 @@ private:
     int m_skillCooldownMs = 3000;          // 冷却时间（毫秒）
     int m_skillCooldownRemaining = 0;      // 剩余冷却时间（毫秒）
     QTimer* m_skillCooldownTimer;
+
+
+
+
+    // E技能
+    bool m_machineGunReady = true;
+    bool m_machineGunActive = false;
+    int m_machineGunDuration = 2000;          // 持续时间2秒
+    int m_machineGunCooldown = 3000;          // 冷却3秒
+    int m_machineGunFireInterval = 50;        // 每50ms发射一发
+    QTimer* m_machineGunTimer;
+    QTimer* m_machineGunCooldownTimer;
+    QTimer* m_machineGunFireTimer;
+    QTimer* m_machineGunCooldownUpdateTimer;
+
+    float m_machineGunSpreadAngle = 70.0f;          // 总覆盖角度（度）
+    int m_machineGunBulletsPerBurst = 7;            // 每波子弹数量
+
+
+
 };
