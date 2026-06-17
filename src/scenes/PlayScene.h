@@ -49,6 +49,10 @@ class PlayScene : public Scene {
 
 public:
 
+    // ======================== 构造与析构 ========================
+    explicit PlayScene(QObject* parent = nullptr);
+
+    // ======================== 玩家属性/状态 ========================
     //闪烁查看
     Q_PROPERTY(bool invincible READ isInvincible NOTIFY invincibleChanged);
     bool isInvincible() const { return m_invincible; }
@@ -62,21 +66,31 @@ public:
     Q_INVOKABLE qreal  getAnimDir() const { return static_cast<int>(m_animDir); }
 
     Q_PROPERTY(int playerHp READ playerHp NOTIFY playerHpChanged)
+    int playerHp() const { return m_playerHp; }
+    Q_PROPERTY(int maxHp READ maxHp NOTIFY statsChanged)
+    int maxHp() const { return m_maxHp; }
 
+    QRectF playerRect() const { return m_playerRect; }//暴露给windwo,然后window对象player对象的坐标属性,方便传递给qml,修改qml数据
+    AnimDir animDirection() const { return m_animDir; }
 
+    // ======================== 玩家移动/输入 ========================
+    void setMoveDirection(const QPointF& dir);
+    void onKeyPress(Qt::Key key);
+    void onKeyRelease(Qt::Key key);
+
+    // ======================== 子弹 ========================
     //--------------------------------------------子弹类----------------------------------
     Q_PROPERTY(QVariantList bullets READ bullets NOTIFY bulletsChanged)
     QVariantList bullets() const;
 
     Q_INVOKABLE void shootBullet(const QPointF& target);//射击敌人
 
-
+    // ======================== 敌人 ========================
     //--------------------------------------------------敌人类---------------------------
-
     Q_PROPERTY(QVariantList enemies READ enemies NOTIFY enemiesChanged);
+    QRectF mapBounds() const { return m_mapBounds; }
 
-
-
+    // ======================== 升级与经验 ========================
     //-----------------------------------------------升级相关-----------------------------------------
     Q_PROPERTY(int level READ level NOTIFY statsChanged)
     Q_PROPERTY(int currentExp READ currentExp NOTIFY statsChanged)
@@ -88,8 +102,6 @@ public:
     Q_PROPERTY(QVariantList expOrbs READ expOrbs NOTIFY expOrbsChanged)
     QVariantList expOrbs()  const;
 
-
-
     int level() const { return m_level; }
     int currentExp() const { return m_currentExp; }
     int expToNext() const { return m_expToNextLevel; }
@@ -98,18 +110,9 @@ public:
     float penetrationChance() const { return m_penetrationChance; }
     Q_INVOKABLE void applyUpgrade(int index); // 由QML调用
 
-    Q_PROPERTY(int maxHp READ maxHp NOTIFY statsChanged)
-    int maxHp() const { return m_maxHp; }
-
-
-    //----------------------------------------暂停相关
-    void setUpgrading(bool upgrading);
-    bool isUpgrading() const { return m_isUpgrading;}
-
-
+    // ======================== 技能 ========================
     //技能散射
     Q_INVOKABLE void castSkill();  // 由QML或主窗口调用
-
 
     Q_PROPERTY(bool skillReady READ isSkillReady NOTIFY skillReadyChanged)
     Q_PROPERTY(int skillCooldownRemaining READ skillCooldownRemaining NOTIFY skillCooldownUpdated)
@@ -117,68 +120,73 @@ public:
     bool isSkillReady() const { return m_skillReady; }
     int skillCooldownRemaining() const { return m_skillCooldownRemaining; }
 
+    // ======================== 暂停/升级状态 ========================
+    //----------------------------------------暂停相关
+    void setUpgrading(bool upgrading);
+    bool isUpgrading() const { return m_isUpgrading;}
 
-public:
-    explicit PlayScene(QObject* parent = nullptr);
+    // ======================== 场景通用接口 ========================
     void onEnter() override;//进入场景后加载场景中障碍物的坐标,便于碰撞检测
     void update(int deltaMs) override;
     void draw() override {}
-    int playerHp() const { return m_playerHp; }
     bool collidesWithObstacles() const;
     bool collidesWithObstacles(const QRectF& rect) const;//重载检测,用于测试敌人对障碍物碰撞
 
-
-    // 供 MainWindow 调用来设置移动方向--角色移动相关
-    void setMoveDirection(const QPointF& dir);
-    QRectF playerRect() const { return m_playerRect; }//暴露给windwo,然后window对象player对象的坐标属性,方便传递给qml,修改qml数据
-    void onKeyPress(Qt::Key key);
-    void onKeyRelease(Qt::Key key);
-    AnimDir animDirection() const { return m_animDir; }
-
-    //--------------------------------------------------敌人类
-
-    // QVariantList enemies() const;
-    QRectF mapBounds() const { return m_mapBounds; }
-
-
 signals:
 
-
+    // ======================== 信号 ========================
     void invincibleChanged(bool);
 
-
-
+    void playerRectChanged();  // 必须在修改 m_playerRect 后发射
+    void playerHpChanged();
 
     //-----------子弹类
-     void bulletsChanged();
+    void bulletsChanged();
 
-    void playerRectChanged();  // 必须在修改 m_playerRect 后发射
-  void playerHpChanged();
-
-   void explosionAt(qreal x, qreal y);   // 爆炸特效信号
+    void explosionAt(qreal x, qreal y);   // 爆炸特效信号
 
     //--------------------敌人出现
-   void enemiesChanged();
+    void enemiesChanged();
 
-  //-----------------------------------------------升级相关-----------------------------------------
-   void statsChanged();
-   void upgradeRequested(const QStringList& options); // 通知QML弹出升级选择
+    //-----------------------------------------------升级相关-----------------------------------------
+    void statsChanged();
+    void upgradeRequested(const QStringList& options); // 通知QML弹出升级选择
     void expOrbsChanged();
-
 
     //------------------技能散射
     void skillReadyChanged();
     void skillCooldownUpdated();
 
-
-
 private:
+    // ======================== 内部方法 ========================
     void loadObstacles(const QString& path);
     void movePlayer(const QPointF& delta); //传入新坐标然后检测---防止玩家移动出地图
 
+    // 供 MainWindow 调用来设置移动方向--角色移动相关
+    void updateMovement();  // 根据按键组合更新 m_moveDir 和 m_animDir
 
+    void handlePlayerCollision();
+    void cleanupDeadObjects();
+
+    //--------------------------------------------------敌人类--------------------------------------------
+    void spawnEnemy();
+    void updateGameObjects(int deltaMs);
+    void handleCollisions();
+
+    //-------------------------------子弹射击类-----------------------------------------------------
+    void handleCollisionsWithBullets(); // 处理子弹与敌人碰撞
+    void handleBulletObstacleCollision(); //子弹和障碍物
+
+    //-----------------------------------------------升级相关-----------------------------------------
+    void addExp(int value);
+    void handleExpOrbCollection();
+    QStringList generateUpgradeOptions();
+    void upgradeLevel(); // 升级核心逻辑
+
+    void startInvincible();
+
+    // ======================== 成员变量 ========================
     QRectF m_mapBounds;//地图边界操作
-
     QVector<Obstacle> m_obstacles;  //场景中的碰撞障碍物
     QRectF m_playerRect;      // 玩家碰撞箱（位置+宽高）
     QPointF m_moveDir;        // 单位方向
@@ -186,66 +194,31 @@ private:
 
     bool m_invincible = false;
     QTimer* m_invincibleTimer;
-    void startInvincible();
 
-// 供 MainWindow 调用来设置移动方向--角色移动相关
-    void updateMovement();  // 根据按键组合更新 m_moveDir 和 m_animDir
     bool m_left = false, m_right = false, m_up = false, m_down = false;
     AnimDir m_animDir = AnimDir::Idle;
     AnimDir m_lastMoveDir = AnimDir::Right;  // 记录最后一次移动的方向，默认右
 
-    void handlePlayerCollision();
-    void cleanupDeadObjects();
-
-
-
     //--------------------------------------------------敌人类--------------------------------------------
-
-
-
     QList<GameObject*> m_objects;
     QVariantList enemies() const;   // 实现从 m_objects 过滤敌人
-    // 生成敌人时创建 PaimonEnemy 对象
-    void spawnEnemy();
-    void updateGameObjects(int deltaMs);
-    void handleCollisions();
-
-
-    //-------------------------------子弹射击类-----------------------------------------------------
-    // 成员
-
     int m_playerHp = 1000;
-    void handleCollisionsWithBullets(); // 处理子弹与敌人碰撞
-    void handleBulletObstacleCollision(); //子弹和障碍物
-//-----------------------------------------------升级相关-----------------------------------------
 
-    void addExp(int value);
-    void handleExpOrbCollection();
-    QStringList generateUpgradeOptions();
-    void upgradeLevel(); // 升级核心逻辑
-
-
-
-
+    //-----------------------------------------------升级相关-----------------------------------------
     // 玩家属性
     int m_level = 1;
     int m_currentExp = 0;
     int m_expToNextLevel = 120; // 100 + level*20
     int m_maxHp = 1000;
     int m_bulletDamage = 100;
-    float m_penetrationChance = 1.0f; // 0~1
-     QStringList m_currentUpgradeOptions;   // 存储当前升级的三个选项
-       bool m_isUpgrading = false;
+    float m_penetrationChance = 0.0f; // 0~1
+    QStringList m_currentUpgradeOptions;   // 存储当前升级的三个选项
+    bool m_isUpgrading = false;
 
-
-
-       //散射
+    //散射
     float m_skillAngleStep = 10.0f;  // 角度步长（度），默认为10辐射散开技能
-       bool m_skillReady = true;
-       int m_skillCooldownMs = 3000;          // 冷却时间（毫秒）
-       int m_skillCooldownRemaining = 0;      // 剩余冷却时间（毫秒）
-       QTimer* m_skillCooldownTimer;
-
-
+    bool m_skillReady = true;
+    int m_skillCooldownMs = 3000;          // 冷却时间（毫秒）
+    int m_skillCooldownRemaining = 0;      // 剩余冷却时间（毫秒）
+    QTimer* m_skillCooldownTimer;
 };
-

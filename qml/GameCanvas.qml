@@ -1,5 +1,6 @@
 import QtQuick 2.0
 import QtQuick.Controls
+
 Rectangle {
     width: 1625
     height: 968
@@ -39,13 +40,9 @@ Rectangle {
             onRunningChanged: {
                 if (!running) playerContainer.opacity = 1.0
             }
-
         }
         // Text { text: "无敌: " + playScene.invincible; color: "white"; x: 10; y: 50 }
     }
-
-
-
 
     // 玩家位置更新
     Timer {
@@ -57,8 +54,37 @@ Rectangle {
         }
     }
 
+    property int playerFrameIndex: 0
+    property int playerAnimDir: 0
+    property bool playerMoving: false
 
-    //血量
+    Timer {
+        interval: 80
+        running: true
+        repeat: true
+        onTriggered: {
+            playerAnimDir = playScene.getAnimDir()
+            playerMoving = playScene.isMoving()
+            playerFrameIndex = (playerFrameIndex + 1) % 4
+            updatePlayerImage()
+        }
+    }
+
+    function updatePlayerImage() {
+        var prefix = playerMoving ? "run" : "idle"
+        var dirStr = ""
+        switch (playerAnimDir) {
+            case 1: dirStr = "left"; break
+            case 2: dirStr = "right"; break
+            case 3: dirStr = "back"; break   // Up
+            case 4: dirStr = "front"; break  // Down
+            default: dirStr = "right"
+        }
+        var fileName = "hajimi_" + prefix + "_" + dirStr + "_" + (playerFrameIndex+1) + ".png"
+        playerImage.source = "../Resource/role/hajimi/" + fileName
+    }
+
+    // 血量
     Rectangle {
         width: 200; height: 30
         anchors.horizontalCenter: parent.horizontalCenter
@@ -78,45 +104,12 @@ Rectangle {
         }
     }
 
-    property int playerFrameIndex: 0
-    property int playerAnimDir: 0
-    property bool playerMoving: false
-
-    Timer {
-        interval: 80
-        running: true
-        repeat: true
-        onTriggered: {
-            playerAnimDir = playScene.getAnimDir()
-            playerMoving = playScene.isMoving()
-            playerFrameIndex = (playerFrameIndex + 1) % 4
-            updatePlayerImage()
-
-        }
-    }
-
-    function updatePlayerImage() {
-        var prefix = playerMoving ? "run" : "idle"
-        var dirStr = ""
-        switch (playerAnimDir) {
-            case 1: dirStr = "left"; break
-            case 2: dirStr = "right"; break
-            case 3: dirStr = "back"; break   // Up
-            case 4: dirStr = "front"; break  // Down
-            default: dirStr = "right"
-        }
-        var fileName = "hajimi_" + prefix + "_" + dirStr + "_" + (playerFrameIndex+1) + ".png"
-        playerImage.source = "../Resource/role/hajimi/" + fileName
-    }
-
-
-    //射击的指针
-
+    // 射击的指针
     MouseArea {
         id: mouseArea
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.BlankCursor   // 隐藏系统光标
+        anchors.fill: parent
+        hoverEnabled: true
+        cursorShape: Qt.BlankCursor   // 隐藏系统光标
 
         Item {
             id: crosshair
@@ -125,11 +118,10 @@ Rectangle {
             visible: true
             z: 100
             // 移除 x/y 绑定，改为在 onPositionChanged 中设置
-            Rectangle {
-                width: 2; height: 20; color: "#80FF0000"; anchors.centerIn: parent; rotation: 45
-            }
-            Rectangle {
-                width: 2; height: 20; color: "#80FF0000"; anchors.centerIn: parent; rotation: -45
+            Image{
+                width: 40
+                height: 40
+                source: "../Resource/role/hajimi/aim.png"
             }
         }
 
@@ -142,8 +134,7 @@ Rectangle {
         }
     }
 
-
-    //子弹的repeater
+    // 子弹的repeater
     Repeater {
         model: playScene.bullets
         delegate: Image {
@@ -154,7 +145,6 @@ Rectangle {
             y: modelData.y - height/2
         }
     }
-
 
     // ================= 技能按钮（右下角） =================
     Item {
@@ -174,9 +164,9 @@ Rectangle {
             border.width: 2
         }
 
-        // 技能图标（可替换为图片）
+        // 技能图标
         Image {
-            source: "../Resource/role/hajimi/fire_na_ho.png"   // 请替换为实际图标路径
+            source: "../Resource/role/hajimi/fire_na_ho.png"
             anchors.fill: parent
             anchors.margins: 10
             fillMode: Image.PreserveAspectFit
@@ -235,9 +225,7 @@ Rectangle {
         }
     }
 
-
-
-    //子弹爆炸动画显示
+    // 子弹爆炸动画显示
     // 特效模型（存放所有爆炸特效）
     ListModel {
         id: effectModel
@@ -256,14 +244,13 @@ Rectangle {
     Repeater {
         model: effectModel
         delegate: Item {
-             z:10
+            z:10
             Image {
                 source: "../Resource/weapen/sun/sun_explode_" + (model.frame + 1) + ".png"
                 width: 80
                 height: 80
                 x: model.x  -30 // 64/2
                 y: model.y   -30
-
             }
             Timer {
                 interval: 80
@@ -289,19 +276,12 @@ Rectangle {
         }
     }
 
-
-
-
-
-
-
     // ================= 敌人 =================
     Repeater {
         model: playScene.enemies
         delegate: Item {
             // 阴影（与敌人图片同级）
             Image {
-
                 source: "../Resource/role/paimeng/shadow.png"
                 width: modelData.width * 0.6          // 宽度为敌人的 60%
                 height: modelData.height * 0.15       // 高度为敌人的 15%（扁平）
@@ -309,7 +289,6 @@ Rectangle {
                 y: modelData.y + modelData.height - height+10       // 位于角色脚下
                 opacity:1
                 z: 0
-
             }
 
             // 敌人图片
@@ -326,9 +305,8 @@ Rectangle {
                 }
                 opacity: modelData.isDying ? (Math.floor(Date.now() / 100) % 2 === 0 ? 0.3 : 1.0) : 1.0
                 z: 1
-
             }
-            //敌人闪红图片
+            // 敌人闪红图片
             Image {
                 source: {
                     var dirStr = (modelData.direction === 1) ? "left" : "right"
@@ -341,9 +319,6 @@ Rectangle {
                 opacity: modelData.isFlashing ? 1 : 0.0
                 z: 2
             }
-
-
-
 
             // 血量文字（保持在最上层）
             Text {
@@ -358,9 +333,6 @@ Rectangle {
             }
         }
     }
-
-
-
 
     //==============================================升级相关
     Rectangle {
@@ -409,8 +381,7 @@ Rectangle {
         }
     }
 
-    //经验条显示
-
+    // 经验条显示
     Rectangle {
         id: expBar
         x: 20; y: 20
@@ -430,7 +401,6 @@ Rectangle {
             font.pixelSize: 12
         }
     }
-
 
     //----------------经验求
     Repeater {
@@ -456,7 +426,4 @@ Rectangle {
             y: modelData.y - 20
         }
     }
-
-
-
 }
