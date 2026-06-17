@@ -382,6 +382,7 @@ QVariantList PlayScene::enemies() const {
             map["frameIndex"] = e->frameIndex;
             map["hp"] = e->hp;//展示血量
             map["isDying"] = e->isDying();//暴露死亡
+            map["isFlashing"] = e->isFlashing();
             list.append(map);
         }
     }
@@ -416,6 +417,9 @@ void PlayScene::handleCollisionsWithBullets() {
 
             if (bullet->rect().intersects(enemy->rect())) {
                 enemy->takeDamage(m_bulletDamage);
+
+                 enemy->triggerFlash(80);   // 触发闪白，持续80ms
+
                 if (enemy->hp <= 0 && !enemy->isDying()) {
                     enemy->startDeath(500);   // 启动死亡闪烁
                 }
@@ -423,6 +427,12 @@ void PlayScene::handleCollisionsWithBullets() {
                 emit explosionAt(bullet->rect().center().x(), bullet->rect().center().y());    // 发射爆炸信号动画
                 hit = true;
                 // 穿透逻辑
+                // 击退方向：从玩家指向敌人
+                QPointF dir = enemy->rect().center() - m_playerRect.center();
+                float force = 5.0f;  // 基础击退力度（可升级调整）
+                enemy->applyKnockback(dir, force);
+
+
                 if (bullet->canPenetrate()) {
                     bullet->usePenetration();   // 消耗一次穿透次数
                     // 继续飞行，不删除子弹，跳出内层循环检查下一个敌人（同一帧可能击中多个）

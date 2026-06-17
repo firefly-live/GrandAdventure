@@ -30,11 +30,34 @@ protected:
 
     //敌人死亡状态
 
+    //关于击退
+    QPointF m_knockbackVelocity;   // 击退速度（像素/帧）
+    float m_knockbackDecay = 0.8f; // 每帧衰减系数（0.8~0.9），使击退快速停止
+
+
+    //关于闪白
+    bool m_whiteFlash = false;
+    int m_flashTimer = 0;
+
 public:
     void startDeath(int durationMs = 500);
     bool isDying() const { return m_isDying; }
     bool isReadyToDelete() const { return m_readyToDelete; }
     bool isAlive() const { return !m_isDying && !m_readyToDelete; }
+
+
+    //关于击退
+
+    void applyKnockback(const QPointF& direction, float force);
+    bool hasKnockback() const { return m_knockbackVelocity.manhattanLength() > 0.1f; }
+
+
+    //关于闪白
+    void triggerFlash(int durationMs = 80);
+    bool isFlashing() const { return m_whiteFlash; }
+    void updateFlash(int deltaMs);
+
+
 protected:
     void updateDeath(int deltaMs); // 在子类 update 中调用
     bool m_isDying = false;

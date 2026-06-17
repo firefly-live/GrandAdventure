@@ -17,6 +17,19 @@ void PaimonEnemy::update(int deltaMs) {
         return;
     }
 
+    updateFlash(deltaMs);//闪白
+    //  应用击退
+    if (hasKnockback()) {
+        m_rect.translate(m_knockbackVelocity);
+        m_knockbackVelocity *= m_knockbackDecay; // 每帧衰减
+        if (m_knockbackVelocity.manhattanLength() < 0.1f) {
+            m_knockbackVelocity = QPointF(0,0);
+        }
+        // 击退期间不执行追踪逻辑（避免抵消击退效果）
+        return;
+    }
+
+
 
     Q_UNUSED(deltaMs);
     if (!m_scene) return;

@@ -220,6 +220,7 @@ Rectangle {
         delegate: Item {
             // 阴影（与敌人图片同级）
             Image {
+
                 source: "../Resource/role/paimeng/shadow.png"
                 width: modelData.width * 0.6          // 宽度为敌人的 60%
                 height: modelData.height * 0.15       // 高度为敌人的 15%（扁平）
@@ -227,6 +228,7 @@ Rectangle {
                 y: modelData.y + modelData.height - height+10       // 位于角色脚下
                 opacity:1
                 z: 0
+
             }
 
             // 敌人图片
@@ -243,7 +245,24 @@ Rectangle {
                 }
                 opacity: modelData.isDying ? (Math.floor(Date.now() / 100) % 2 === 0 ? 0.3 : 1.0) : 1.0
                 z: 1
+
             }
+            //敌人闪红图片
+            Image {
+                source: {
+                    var dirStr = (modelData.direction === 1) ? "left" : "right"
+                    return "../Resource/role/paimeng/attack_" + dirStr + ".png"
+                }
+                width: modelData.width
+                height: modelData.height
+                x: modelData.x
+                y: modelData.y
+                opacity: modelData.isFlashing ? 1 : 0.0
+                z: 2
+            }
+
+
+
 
             // 血量文字（保持在最上层）
             Text {

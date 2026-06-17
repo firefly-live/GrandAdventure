@@ -24,3 +24,29 @@ void Enemy::updateDeath(int deltaMs) {
         // 标记删除，由 PlayScene 清理
     }
 }
+
+void Enemy::applyKnockback(const QPointF& direction, float force) {
+    // 方向归一化，乘以力度
+    float len = std::hypot(direction.x(), direction.y());
+    if (len > 0) {
+        m_knockbackVelocity = (direction / len) * force;
+    } else {
+        m_knockbackVelocity = QPointF(0,0);
+    }
+}
+
+
+void Enemy::triggerFlash(int durationMs) {
+    m_whiteFlash = true;
+    m_flashTimer = durationMs;
+}
+
+// 在 Enemy::updateDeath 或子类 update 中调用
+void Enemy::updateFlash(int deltaMs) {
+    if (!m_whiteFlash) return;
+    m_flashTimer -= deltaMs;
+    if (m_flashTimer <= 0) {
+        m_whiteFlash = false;
+        emit rectChanged(); // 通知 QML 更新
+    }
+}
