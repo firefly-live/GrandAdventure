@@ -21,6 +21,24 @@ PlayScene::PlayScene(QObject* parent) : Scene(parent) {
         emit invincibleChanged(false);   // 需要添加信号
     });
 
+    //技能散射
+    m_skillCooldownTimer = new QTimer(this);
+    m_skillCooldownTimer->setInterval(100);  // 每100ms更新一次UI
+    connect(m_skillCooldownTimer, &QTimer::timeout, [this]() {
+        m_skillCooldownRemaining -= 100;
+        if (m_skillCooldownRemaining <= 0) {
+            m_skillCooldownRemaining = 0;
+            m_skillReady = true;
+            m_skillCooldownTimer->stop();
+            emit skillReadyChanged();
+        }
+        emit skillCooldownUpdated();
+    });
+
+
+
+
+
 
     m_playerRect = QRectF(100, 100, 80, 80);
 }
@@ -159,6 +177,9 @@ void PlayScene::onKeyPress(Qt::Key key) {
         break;
     case Qt::Key_S:
         m_down = true;
+        break;
+    case Qt::Key_F:
+        castSkill();
         break;
     default:
         return;
@@ -602,4 +623,37 @@ void PlayScene::startInvincible() {
     m_invincible = true;
     emit invincibleChanged(true);
     m_invincibleTimer->start(2000);  // 2秒无敌
+}
+
+//技能散射
+
+#include <cmath>   // 已包含
+
+void PlayScene::castSkill() {
+
+    if(!m_skillReady)
+        return;//没冷却好退出
+
+    const float angleStepRad = m_skillAngleStep * M_PI / 180.0f;
+    const int bulletCount = static_cast<int>(360.0f / m_skillAngleStep);
+    QPointF center = m_playerRect.center();
+
+    for (int i = 0; i < bulletCount; ++i) {
+        float angle = i * angleStepRad;
+        QPointF dir(std::cos(angle), std::sin(angle));
+        // 创建子弹，方向为 dir，起始位置为玩家中心
+        Bullet* bullet = new Bullet(center, dir, this);
+        // 可设置技能子弹的特殊属性（如速度、伤害、穿透等），但这里使用默认
+        // bullet->setSpeed(技能速度);
+        m_objects.append(bullet);
+    }
+
+
+    // 进入冷却
+    m_skillReady = false;
+    m_skillCooldownRemaining = m_skillCooldownMs;
+    m_skillCooldownTimer->start();
+    emit skillReadyChanged();
+    emit skillCooldownUpdated();
+    // 可选：发射后发射一个声音或特效，但不强制
 }

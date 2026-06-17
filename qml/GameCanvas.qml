@@ -156,6 +156,87 @@ Rectangle {
     }
 
 
+    // ================= 技能按钮（右下角） =================
+    Item {
+        id: skillButton
+        width: 80
+        height: 80
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: 30
+
+        // 技能背景（圆形）
+        Rectangle {
+            anchors.fill: parent
+            radius: width/2
+            color: "#333333"
+            border.color: "white"
+            border.width: 2
+        }
+
+        // 技能图标（可替换为图片）
+        Image {
+            source: "../Resource/role/hajimi/fire_na_ho.png"   // 请替换为实际图标路径
+            anchors.fill: parent
+            anchors.margins: 10
+            fillMode: Image.PreserveAspectFit
+            opacity: playScene.skillReady ? 1.0 : 0.5
+        }
+
+        // 冷却遮罩（旋转/扇形遮罩，表示冷却进度）
+        Rectangle {
+            anchors.fill: parent
+            color: "transparent"
+            border.color: "transparent"
+
+            // 使用 Canvas 绘制扇形冷却进度
+            Canvas {
+                id: cooldownCanvas
+                anchors.fill: parent
+                visible: !playScene.skillReady
+                onPaint: {
+                    var ctx = getContext("2d")
+                    ctx.clearRect(0, 0, width, height)
+                    var centerX = width/2
+                    var centerY = height/2
+                    var radius = width/2
+                    var progress = (playScene.skillCooldownRemaining > 0) ? (playScene.skillCooldownRemaining / playScene.skillCooldownMs) : 0.0
+                    var startAngle = -Math.PI/2
+                    var endAngle = startAngle + (1 - progress) * 2 * Math.PI
+
+                    ctx.beginPath()
+                    ctx.moveTo(centerX, centerY)
+                    ctx.arc(centerX, centerY, radius, startAngle, endAngle)
+                    ctx.closePath()
+                    ctx.fillStyle = "#AA000000"
+                    ctx.fill()
+                }
+            }
+        }
+
+        // 冷却剩余时间文字
+        Text {
+            anchors.centerIn: parent
+            text: playScene.skillReady ? "F" : Math.ceil(playScene.skillCooldownRemaining / 1000) + "s"
+            color: "white"
+            font.bold: true
+            font.pixelSize: 18
+            visible: !playScene.skillReady
+        }
+
+        // 鼠标点击触发技能（或仅显示，按键F触发即可）
+        MouseArea {
+            anchors.fill: parent
+            onClicked: {
+                if (playScene.skillReady) {
+                    playScene.castSkill()
+                }
+            }
+        }
+    }
+
+
+
     //子弹爆炸动画显示
     // 特效模型（存放所有爆炸特效）
     ListModel {

@@ -107,6 +107,16 @@ public:
     bool isUpgrading() const { return m_isUpgrading;}
 
 
+    //技能散射
+    Q_INVOKABLE void castSkill();  // 由QML或主窗口调用
+
+
+    Q_PROPERTY(bool skillReady READ isSkillReady NOTIFY skillReadyChanged)
+    Q_PROPERTY(int skillCooldownRemaining READ skillCooldownRemaining NOTIFY skillCooldownUpdated)
+
+    bool isSkillReady() const { return m_skillReady; }
+    int skillCooldownRemaining() const { return m_skillCooldownRemaining; }
+
 
 public:
     explicit PlayScene(QObject* parent = nullptr);
@@ -154,6 +164,12 @@ signals:
    void statsChanged();
    void upgradeRequested(const QStringList& options); // 通知QML弹出升级选择
     void expOrbsChanged();
+
+
+    //------------------技能散射
+    void skillReadyChanged();
+    void skillCooldownUpdated();
+
 
 
 private:
@@ -220,5 +236,16 @@ private:
     float m_penetrationChance = 1.0f; // 0~1
      QStringList m_currentUpgradeOptions;   // 存储当前升级的三个选项
        bool m_isUpgrading = false;
+
+
+
+       //散射
+    float m_skillAngleStep = 10.0f;  // 角度步长（度），默认为10辐射散开技能
+       bool m_skillReady = true;
+       int m_skillCooldownMs = 3000;          // 冷却时间（毫秒）
+       int m_skillCooldownRemaining = 0;      // 剩余冷却时间（毫秒）
+       QTimer* m_skillCooldownTimer;
+
+
 };
 
