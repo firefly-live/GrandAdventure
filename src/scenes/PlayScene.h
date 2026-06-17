@@ -144,6 +144,9 @@ signals:
 
     void playerRectChanged();  // 必须在修改 m_playerRect 后发射
   void playerHpChanged();
+
+   void explosionAt(qreal x, qreal y);   // 爆炸特效信号
+
     //--------------------敌人出现
    void enemiesChanged();
 

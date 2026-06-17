@@ -41,7 +41,7 @@ Rectangle {
             }
 
         }
-        Text { text: "无敌: " + playScene.invincible; color: "white"; x: 10; y: 50 }
+        // Text { text: "无敌: " + playScene.invincible; color: "white"; x: 10; y: 50 }
     }
 
 
@@ -143,6 +143,7 @@ Rectangle {
     }
 
 
+    //子弹的repeater
     Repeater {
         model: playScene.bullets
         delegate: Image {
@@ -153,6 +154,62 @@ Rectangle {
             y: modelData.y - height/2
         }
     }
+
+
+    //子弹爆炸动画显示
+    // 特效模型（存放所有爆炸特效）
+    ListModel {
+        id: effectModel
+    }
+
+    // 添加爆炸特效的函数（由 C++ 调用）
+    function addExplosion(x, y) {
+        effectModel.append({
+            x: x,
+            y: y,
+            frame: 0,
+            totalFrames: 4
+        });
+    }
+
+    Repeater {
+        model: effectModel
+        delegate: Item {
+             z:10
+            Image {
+                source: "../Resource/weapen/sun/sun_explode_" + (model.frame + 1) + ".png"
+                width: 80
+                height: 80
+                x: model.x  -30 // 64/2
+                y: model.y   -30
+
+            }
+            Timer {
+                interval: 80
+                running: true
+                repeat: true
+                onTriggered: {
+                    var newFrame = model.frame + 1
+                    if (newFrame >= model.totalFrames) {
+                        effectModel.remove(index)
+                    } else {
+                        effectModel.setProperty(index, "frame", newFrame)
+                    }
+                }
+            }
+        }
+    }
+
+    Connections {
+        target: playScene
+        function onExplosionAt(x, y) {
+            addExplosion(x, y);
+            //console.log("attack bottom enemy"+" "+ x +" "+y);
+        }
+    }
+
+
+
 
 
 
@@ -278,9 +335,25 @@ Rectangle {
     //----------------经验求
     Repeater {
         model: playScene.expOrbs
-        delegate: Rectangle {
-            width: 10; height: 10; color: "gold"
-            x: modelData.x; y: modelData.y
+        delegate: Item {
+            // 阴影
+            Image {
+                source: "../Resource/role/paimeng/shadow.png"
+                width: 30; height: 20
+                anchors.centerIn: parent
+                anchors.verticalCenterOffset: 10   // 偏移
+                opacity: 1; z: 0
+            }
+            // 经验球本体
+            Image {
+                source: "../Resource/role/paimeng/exp.png"
+                width: 40; height: 40
+                anchors.centerIn: parent
+                z: 1
+            }
+            // 将 Item 的位置绑定到模型数据
+            x: modelData.x - 20   // 因为本体的 width/2 = 20
+            y: modelData.y - 20
         }
     }
 

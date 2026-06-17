@@ -420,6 +420,7 @@ void PlayScene::handleCollisionsWithBullets() {
                     enemy->startDeath(500);   // 启动死亡闪烁
                 }
 
+                emit explosionAt(bullet->rect().center().x(), bullet->rect().center().y());    // 发射爆炸信号动画
                 hit = true;
                 // 穿透逻辑
                 if (bullet->canPenetrate()) {
@@ -435,6 +436,9 @@ void PlayScene::handleCollisionsWithBullets() {
                     i--; // 调整索引
                     break;
                 }
+
+
+
             }
         }
         // 注意：若穿透且击中了敌人，子弹未删除，继续后续循环
@@ -446,6 +450,7 @@ void PlayScene::handleBulletObstacleCollision() {
         Bullet* bullet = dynamic_cast<Bullet*>(m_objects[i]);
         if (!bullet) continue;
         if (collidesWithObstacles(bullet->rect())) {
+            emit explosionAt(bullet->rect().center().x(), bullet->rect().center().y());    // 发射爆炸信号动画
             delete bullet;               // 直接删除
             m_objects.removeAt(i);       // 移除
         }
@@ -481,7 +486,7 @@ void PlayScene::handleExpOrbCollection() {
         }
 
        if (orb->isMovingToPlayer() && (orb->rect().center() - m_playerRect.center()).manhattanLength() < 15) {
-            addExp(orb->value());
+            addExp(orb->value());//升级
             delete orb;
             m_objects.removeAt(i);
              emit expOrbsChanged();   // 添加这一行，通知 QML 刷新
