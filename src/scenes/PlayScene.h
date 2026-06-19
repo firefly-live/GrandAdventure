@@ -163,6 +163,13 @@ public:
     int expRequiredForLevel(int level) const;
 
 
+    //存活计数
+    Q_PROPERTY(int killCount READ killCount NOTIFY statsChanged)
+    Q_PROPERTY(int survivalTime READ survivalTime NOTIFY statsChanged)
+
+    int killCount() const { return m_killCount; }
+    int survivalTime() const { return m_survivalTime; }
+
 signals:
 
     // ======================== 信号 ========================
@@ -317,10 +324,7 @@ private:
 
 
 
-    // 射击间隔控制
-    float m_shootCooldown = 0.5f;        // 初始冷却（秒）
-    float m_shootCooldownTimer = 0.0f;   // 当前冷却计时
-    float m_shootCooldownMin = 0.15f;    // 下限
+
 
     // 穿透次数（与概率独立）
     int m_penetrationCount = 0;          // 初始穿透次数
@@ -329,8 +333,7 @@ private:
     // 经验加成
     float m_expMultiplier = 1.0f;        // 可叠加，上限 2.0（200%）
 
-    // 击杀计数（用于死亡界面）
-    int m_killCount = 0;
+
 
 
 
@@ -361,5 +364,12 @@ private:
     float m_spawnTimer = 0.0f;          // 累加计时器
     int m_waveCount = 1;               // 每波生成数量
     int m_maxEnemies = 50;             // 最大敌人数
+
+
+
+
+    // 击杀技术
+    int m_killCount = 0;
+    int m_survivalTime = 0;  // 存活时间（秒）
 
 };

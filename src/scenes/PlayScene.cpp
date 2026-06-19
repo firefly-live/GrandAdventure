@@ -88,11 +88,16 @@ void PlayScene::update(int deltaMs) {
     if (m_isUpgrading) return;
     if (m_gameOver) return;
 
-    // 1. 累加游戏时间
+
+    //先加时间再赋值查看存活
     m_gameTimeMs += deltaMs;
+    m_survivalTime = m_gameTimeMs / 1000;
     float timeSec = m_gameTimeMs / 1000.0f;
 
     // 2. 更新生成参数
+
+    m_maxEnemies = 50 + m_level * 2;
+
     // 生成间隔：从1秒逐渐降低到0.5秒
     m_spawnInterval = qMax(0.5f, 1.0f - timeSec * 0.002f);
     // 每波数量：每120秒增加1，上限5
@@ -341,6 +346,8 @@ void PlayScene::cleanupDeadObjects() {
         }
         if (Enemy* e = dynamic_cast<Enemy*>(obj)) {
             if (e->isReadyToDelete()) {
+
+
                 int expValue = static_cast<int>(e->getMaxHp() * 0.3f + 3);
                 ExpOrb* orb = new ExpOrb(e->rect().center(), expValue, this);
                 m_objects.append(orb);
@@ -486,6 +493,7 @@ void PlayScene::handleCollisionsWithBullets() {
                         enemy->triggerFlash(80);
                         if (enemy->hp <= 0 && !enemy->isDying()) {
                             enemy->startDeath(500);
+                              m_killCount++;  // 增加击杀数
 
                         }
                         emit explosionAt(bullet->rect().center().x(), bullet->rect().center().y());
@@ -562,25 +570,26 @@ void PlayScene::handleExpOrbCollection() {
 
 
 void PlayScene::addExp(int value) {
-
-    //经验达到加血效果--超出最大血量.按最大血量算
-    if((m_playerHp+=100)<=m_maxHp){}
-    else{m_playerHp=m_maxHp;}
+    // 回血逻辑
+    if (m_playerHp + 100 <= m_maxHp) {
+        m_playerHp += 100;
+    } else {
+        m_playerHp = m_maxHp;
+    }
     emit playerHpChanged();
 
-
-
     if (m_level >= 20) {
-        // 满级后不再增加经验，可丢弃经验球（或显示提示）
         return;
     }
 
+    // 应用经验加成
+    int finalValue = static_cast<int>(value * m_expMultiplier);
+    m_currentExp += finalValue;
 
-    m_currentExp += value;
     while (m_currentExp >= m_expToNextLevel && m_level < 20) {
         m_currentExp -= m_expToNextLevel;
         m_level++;
-        m_expToNextLevel = expRequiredForLevel(m_level);  // 使用曲线
+        m_expToNextLevel = expRequiredForLevel(m_level);
         upgradeLevel();
         emit statsChanged();
     }
@@ -597,43 +606,56 @@ void PlayScene::upgradeLevel() {
 
 QStringList PlayScene::generateUpgradeOptions() {
     QStringList allOptions = {
-        "增加最大生命值 +100",
-        "增加子弹伤害 +100",
-        "增加移动速度 +1",
-        "增加子弹穿透概率 +10% (最高90%)"
+        "增加最大生命值 +20",
+        "增加子弹伤害 +2",
+        "增加移动速度 +0.1",
+        "减少E技能冷却 -0.3秒",
+        "减少Q技能冷却 -0.5秒",
+        "增加穿透概率 +5%",
+        "增加穿透次数 +1",
+        "增加经验获取 +10%"
     };
     // 随机取三个不重复的
     QStringList chosen;
-    QList<int> indices = {0,1,2,3};
+    QList<int> indices = {0,1,2,3,4,5,6,7,8};
     std::random_shuffle(indices.begin(), indices.end());
     for (int i = 0; i < 3; ++i) chosen << allOptions[indices[i]];
     return chosen;
 }
 
 void PlayScene::applyUpgrade(int index) {
-    QStringList options = m_currentUpgradeOptions; // 实际应保存上一次生成的选项
-    QString chosen = options[index];
+    QString chosen = m_currentUpgradeOptions[index];
+
     if (chosen.contains("最大生命值")) {
-        m_maxHp = qMin(500, m_maxHp + 20); // 上限500
+        m_maxHp = qMin(500, m_maxHp + 20);
         m_playerHp = m_maxHp;
         emit playerHpChanged();
-    } else if (chosen.contains("子弹伤害")) {
-        m_bulletDamage += 100;
-    } else if (chosen.contains("移动速度")) {
-        m_speed += 1;
-    } else if (chosen.contains("穿透概率")) {
-        m_penetrationChance += 0.1f;
-        if (m_penetrationChance > 0.9f) m_penetrationChance = 0.9f;
-    }else if (chosen.contains("E技能冷却")) {
-        m_skillCooldownMs = qMax(3000, m_skillCooldownMs - 300); // 最低3秒
+    }
+    else if (chosen.contains("子弹伤害")) {
+        m_bulletDamage += 2;
+    }
+    else if (chosen.contains("移动速度")) {
+        m_speed = qMin(5.0f, m_speed + 0.1f);
+    }
+    else if (chosen.contains("E技能冷却")) {
+        m_skillCooldownMs = qMax(3000, m_skillCooldownMs - 300);
     }
     else if (chosen.contains("Q技能冷却")) {
-        m_machineGunCooldown = qMax(5000, m_machineGunCooldown - 500); // 最低5秒
+        m_machineGunCooldown = qMax(5000, m_machineGunCooldown - 500);
     }
-    emit statsChanged();
-     setUpgrading(false);   // 恢复游戏主循环（需要外部实现暂停标志）
-}
+    else if (chosen.contains("穿透概率")) {
+        m_penetrationChance = qMin(0.9f, m_penetrationChance + 0.05f);
+    }
+    else if (chosen.contains("穿透次数")) {
+        m_penetrationCount = qMin(3, m_penetrationCount + 1);
+    }
+    else if (chosen.contains("经验获取")) {
+        m_expMultiplier = qMin(2.0f, m_expMultiplier + 0.1f);
+    }
 
+    emit statsChanged();
+    setUpgrading(false);
+}
 
 QVariantList PlayScene::expOrbs() const {
     QVariantList list;
@@ -784,6 +806,26 @@ int PlayScene::machineGunCooldownRemaining() const {
 void PlayScene::resetGame() {
 
 
+    m_killCount = 0;
+    m_survivalTime = 0;
+
+//重置所有升级相关值
+    m_playerHp = 100;
+    m_maxHp = 100;
+    m_speed = 3.0f;
+    m_bulletDamage = 10;
+    m_penetrationChance = 0.0f;
+    m_penetrationCount = 0;
+    m_expMultiplier = 1.0f;
+    m_skillCooldownMs = 10000;
+    m_machineGunCooldown = 15000;
+    m_level = 1;
+    m_currentExp = 0;
+    m_expToNextLevel = 100;
+
+
+
+
     // 重置生成敌人时间差
     m_gameTimeMs = 0;
     m_spawnTimer = 0.0f;
@@ -792,34 +834,32 @@ void PlayScene::resetGame() {
 
 
     //重置升级相关
-    m_level = 1;
-    m_currentExp = 0;
-    m_expToNextLevel = expRequiredForLevel(1);  // 100
+
+
+
 
     // 重置游戏时间
     m_gameTimeMs = 0;
     m_playerRect = QRectF(100, 100, 80, 80);
-    m_playerHp = 100;
-    m_maxHp = 100;
-    m_speed = 3.0f;
-    m_bulletDamage = 10;
-    m_penetrationChance = 0.0f;
+
+
+
+
+
 
     // 重置升级相关
-    m_level = 1;
-    m_currentExp = 0;
-    m_expToNextLevel = 100;  // 或 expRequiredForLevel(1)
+
     m_isUpgrading = false;
 
     // 重置技能冷却
     m_skillReady = true;
     m_skillCooldownRemaining = 0;
-    m_skillCooldownMs = 10000;
+
     if (m_skillCooldownTimer) m_skillCooldownTimer->stop();
 
     m_machineGunReady = true;
     m_machineGunActive = false;
-    m_machineGunCooldown = 15000;
+
     if (m_machineGunTimer) m_machineGunTimer->stop();
     if (m_machineGunFireTimer) m_machineGunFireTimer->stop();
     if (m_machineGunCooldownTimer) m_machineGunCooldownTimer->stop();

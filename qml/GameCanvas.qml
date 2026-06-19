@@ -561,6 +561,19 @@ Rectangle {
                     background: Rectangle { color: "lightcoral"; radius: 10 }
                     contentItem: Text { text: "退出"; anchors.centerIn: parent; color: "black"; font.pixelSize: 20 }
                 }
+                // 死亡界面中的 Column 内添加
+                Text {
+                    text: "存活时间: " + playScene.survivalTime + " 秒"
+                    color: "white"
+                    font.pixelSize: 20
+                    anchors.horizontalCenter: parent.horizontalCenter
+                }
+                Text {
+                    text: "击杀数: " + playScene.killCount
+                    color: "white"
+                    font.pixelSize: 20
+                    anchors.horizontalCenter: parent.horizontalCenter
+                }
             }
         }
 
