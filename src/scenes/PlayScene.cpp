@@ -14,6 +14,10 @@
 PlayScene::PlayScene(QObject* parent) : Scene(parent) {
 
 
+
+
+
+
     m_invincibleTimer = new QTimer(this);
     m_invincibleTimer->setSingleShot(true);
     connect(m_invincibleTimer, &QTimer::timeout, [this]() {
@@ -84,32 +88,48 @@ void PlayScene::update(int deltaMs) {
     if (m_isUpgrading) return;
     if (m_gameOver) return;
 
-    // 1. 玩家移动
+    // 1. 累加游戏时间
+    m_gameTimeMs += deltaMs;
+    float timeSec = m_gameTimeMs / 1000.0f;
+
+    // 2. 更新生成参数
+    // 生成间隔：从1秒逐渐降低到0.5秒
+    m_spawnInterval = qMax(0.5f, 1.0f - timeSec * 0.002f);
+    // 每波数量：每120秒增加1，上限5
+    m_waveCount = 1 + static_cast<int>(timeSec / 120.0f);
+    m_waveCount = qMin(m_waveCount, 5);
+
+    // 3. 玩家移动
     QPointF delta = m_moveDir * m_speed;
     movePlayer(delta);
 
-    // 2. 更新所有对象（位置、动画等），但不处理碰撞
-    updateGameObjects(deltaMs);   // 已移除内部碰撞调用
-
-    // 3. 构建当前帧的网格（基于最新位置）
+    // 4. 更新对象
+    updateGameObjects(deltaMs);
     updateGrid();
 
-    // 4. 所有碰撞处理（使用最新网格）
-    handleEnemyCollisionsUsingGrid();   // 敌人间碰撞
+    // 5. 碰撞处理
+    handleEnemyCollisionsUsingGrid();
     handleExpOrbCollection();
-    handleCollisionsWithBullets();      // 子弹-敌人
+    handleCollisionsWithBullets();
     handleBulletObstacleCollision();
     handlePlayerCollision();
 
-    // 5. 清理死亡对象
+    // 6. 清理
     cleanupDeadObjects();
 
-    // 6. 生成敌人
-    static int spawnCounter = 0;
-    spawnCounter++;
-    if (spawnCounter > 15) {
-        spawnCounter = 0;
-        spawnEnemy();
+    // 7. 生成敌人（计时器驱动）
+    int enemyCount = 0;
+    for (auto obj : m_objects) {
+        if (dynamic_cast<Enemy*>(obj)) enemyCount++;
+    }
+    if (enemyCount < m_maxEnemies) {
+        m_spawnTimer += deltaMs / 1000.0f;
+        if (m_spawnTimer >= m_spawnInterval) {
+            m_spawnTimer -= m_spawnInterval;
+            for (int i = 0; i < m_waveCount; ++i) {
+                spawnEnemy();
+            }
+        }
     }
 }
 
@@ -291,7 +311,7 @@ void PlayScene::handlePlayerCollision() {
                 e->rect().height() / 2
                 );
             if (!m_invincible &&playerCollisionRect.intersects(enemyCollisionRect)) {
-                m_playerHp -= 500;
+               m_playerHp -= e->getDamage();
                 emit playerHurt();
                 emit playerHpChanged();   // 需要添加这行，否则血条不更新
 
@@ -321,7 +341,7 @@ void PlayScene::cleanupDeadObjects() {
         }
         if (Enemy* e = dynamic_cast<Enemy*>(obj)) {
             if (e->isReadyToDelete()) {
-                int expValue = 50 + m_level * 5;
+                int expValue = static_cast<int>(e->getMaxHp() * 0.3f + 3);
                 ExpOrb* orb = new ExpOrb(e->rect().center(), expValue, this);
                 m_objects.append(orb);
                 emit expOrbsChanged();
@@ -363,9 +383,19 @@ void PlayScene::spawnEnemy() {
     default: x = -40; y = QRandomGenerator::global()->bounded((int)h); break;
     }
     QRectF startRect(x, y, 60, 60);
+
+
+    //根据时间差动态生成敌人的操作
+    float timeSec = m_gameTimeMs / 1000.0f;
+    int hp = static_cast<int>(m_enemyBaseHealth + timeSec * m_enemyHealthGrowth);
+    float speed = qMin(m_enemyBaseSpeed + timeSec * m_enemySpeedGrowth, m_enemyMaxSpeed);
+    int damage = static_cast<int>(qMin(m_enemyBaseDamage + timeSec * m_enemyDamageGrowth, m_enemyDamageMax));
+
     PaimonEnemy* enemy = new PaimonEnemy(startRect, this, this);
+    enemy->setMaxHp(hp);
+    enemy->setSpeed(speed);
+    enemy->setDamage(damage);
     m_objects.append(enemy);
-    // 发射信号通知 QML 敌人列表新增（但下一帧会统一发射，也可以立即发射）
     emit enemiesChanged();
 }
 
@@ -550,8 +580,8 @@ void PlayScene::addExp(int value) {
     while (m_currentExp >= m_expToNextLevel && m_level < 20) {
         m_currentExp -= m_expToNextLevel;
         m_level++;
-        m_expToNextLevel = 100 + m_level * 20;
-        upgradeLevel(); // 应用升级增益（弹出选择界面）
+        m_expToNextLevel = expRequiredForLevel(m_level);  // 使用曲线
+        upgradeLevel();
         emit statsChanged();
     }
     emit statsChanged();
@@ -584,7 +614,7 @@ void PlayScene::applyUpgrade(int index) {
     QStringList options = m_currentUpgradeOptions; // 实际应保存上一次生成的选项
     QString chosen = options[index];
     if (chosen.contains("最大生命值")) {
-        m_maxHp += 100;
+        m_maxHp = qMin(500, m_maxHp + 20); // 上限500
         m_playerHp = m_maxHp;
         emit playerHpChanged();
     } else if (chosen.contains("子弹伤害")) {
@@ -594,6 +624,11 @@ void PlayScene::applyUpgrade(int index) {
     } else if (chosen.contains("穿透概率")) {
         m_penetrationChance += 0.1f;
         if (m_penetrationChance > 0.9f) m_penetrationChance = 0.9f;
+    }else if (chosen.contains("E技能冷却")) {
+        m_skillCooldownMs = qMax(3000, m_skillCooldownMs - 300); // 最低3秒
+    }
+    else if (chosen.contains("Q技能冷却")) {
+        m_machineGunCooldown = qMax(5000, m_machineGunCooldown - 500); // 最低5秒
     }
     emit statsChanged();
      setUpgrading(false);   // 恢复游戏主循环（需要外部实现暂停标志）
@@ -747,49 +782,60 @@ int PlayScene::machineGunCooldownRemaining() const {
 
 
 void PlayScene::resetGame() {
-    // 1. 重置玩家状态
-    m_playerRect = QRectF(100, 100, 80, 80);
-    m_playerHp = 1000;
-    m_maxHp = 1000;
-    m_speed = 5.0f;
-    m_bulletDamage = 100;
-    m_penetrationChance = 0.0f;
 
-    // 2. 重置升级相关
+
+    // 重置生成敌人时间差
+    m_gameTimeMs = 0;
+    m_spawnTimer = 0.0f;
+    m_waveCount = 1;
+    m_spawnInterval = 1.0f;
+
+
+    //重置升级相关
     m_level = 1;
     m_currentExp = 0;
-    m_expToNextLevel = 120;
+    m_expToNextLevel = expRequiredForLevel(1);  // 100
+
+    // 重置游戏时间
+    m_gameTimeMs = 0;
+    m_playerRect = QRectF(100, 100, 80, 80);
+    m_playerHp = 100;
+    m_maxHp = 100;
+    m_speed = 3.0f;
+    m_bulletDamage = 10;
+    m_penetrationChance = 0.0f;
+
+    // 重置升级相关
+    m_level = 1;
+    m_currentExp = 0;
+    m_expToNextLevel = 100;  // 或 expRequiredForLevel(1)
     m_isUpgrading = false;
 
-    // 3. 重置技能冷却
+    // 重置技能冷却
     m_skillReady = true;
     m_skillCooldownRemaining = 0;
+    m_skillCooldownMs = 10000;
     if (m_skillCooldownTimer) m_skillCooldownTimer->stop();
 
     m_machineGunReady = true;
     m_machineGunActive = false;
+    m_machineGunCooldown = 15000;
     if (m_machineGunTimer) m_machineGunTimer->stop();
     if (m_machineGunFireTimer) m_machineGunFireTimer->stop();
     if (m_machineGunCooldownTimer) m_machineGunCooldownTimer->stop();
     if (m_machineGunCooldownUpdateTimer) m_machineGunCooldownUpdateTimer->stop();
 
-    // 4. 清除所有游戏对象（敌人、子弹、经验球等）
-    for (auto obj : m_objects) {
-        delete obj;
-    }
+    // 清除所有游戏对象
+    for (auto obj : m_objects) delete obj;
     m_objects.clear();
 
-    // 5. 重置无敌状态
-    m_invincible = false;
-    emit invincibleChanged(false);
-
-    // 6. 重置移动方向
+    // 重置移动方向
     m_moveDir = QPointF(0,0);
     m_animDir = AnimDir::Right;
     m_lastMoveDir = AnimDir::Right;
     m_left = m_right = m_up = m_down = false;
 
-    // 7. 发射信号通知 UI 更新
+    // 发射信号通知 UI 更新
     emit playerRectChanged();
     emit playerHpChanged();
     emit statsChanged();
@@ -804,7 +850,6 @@ void PlayScene::resetGame() {
     setGameOver(false);
     qDebug() << "PlayScene reset";
 }
-
 
 
 void PlayScene::setGameOver(bool over) {
@@ -950,4 +995,10 @@ void PlayScene::resolveEnemyCollision(Enemy* e1, Enemy* e2) {
             e2->setRect(r2);
         }
     }
+}
+
+
+int PlayScene::expRequiredForLevel(int level) const {
+    // 指数增长：100 * 1.15^(level-1)
+    return static_cast<int>(100 * pow(1.15, level - 1));
 }

@@ -518,7 +518,7 @@ Rectangle {
             MediaPlayer {
                 id: mediaPlayer
                 videoOutput: videoOutput
-                source: "../Resource/videos/attack_kulou.MP4"
+                source: "../Resource/videos/attack_manbo.MP4"
 
                 loops: MediaPlayer.Infinite
                 audioOutput: AudioOutput {

@@ -58,6 +58,19 @@ public:
     void updateFlash(int deltaMs);
 
 
+
+    //-----------------关于youhua
+
+    int maxHp = 20;
+    int damage = 5;
+
+    void setMaxHp(int hp) { maxHp = hp; this->hp = hp; }
+    void setSpeed(float sp) { speed = sp; }
+    void setDamage(int dmg) { damage = dmg; }
+    int getDamage() const { return damage; }
+    int getMaxHp() const { return maxHp; }
+
+
 protected:
     void updateDeath(int deltaMs); // 在子类 update 中调用
     bool m_isDying = false;

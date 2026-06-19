@@ -157,6 +157,12 @@ public:
     Q_INVOKABLE void quitGame();
 
 
+
+
+//经验升级相关
+    int expRequiredForLevel(int level) const;
+
+
 signals:
 
     // ======================== 信号 ========================
@@ -233,7 +239,7 @@ private:
     QVector<Obstacle> m_obstacles;  //场景中的碰撞障碍物
     QRectF m_playerRect;      // 玩家碰撞箱（位置+宽高）
     QPointF m_moveDir;        // 单位方向
-    float m_speed = 5.0f;
+
 
     bool m_invincible = false;
     QTimer* m_invincibleTimer;
@@ -251,20 +257,23 @@ private:
 
     //-----------------------------------------------升级相关-----------------------------------------
     // 玩家属性
-    int m_playerHp = 1000;
+    int m_playerHp = 100;
     int m_level = 1;
     int m_currentExp = 0;
-    int m_expToNextLevel = 120; // 100 + level*20
-    int m_maxHp = 1000;
-    int m_bulletDamage = 100;
+    int m_expToNextLevel = 100; // 100 + level*20
+    int m_maxHp = 100;
+    float m_speed = 3.0f;
+    int m_bulletDamage = 10;
     float m_penetrationChance = 0.0f; // 0~1
+    int m_skillCooldownMs = 10000;          // e冷却时间（毫秒）
+     int m_machineGunCooldown = 15000;          // q冷却15秒
     QStringList m_currentUpgradeOptions;   // 存储当前升级的三个选项
     bool m_isUpgrading = false;
 
     //散射
     float m_skillAngleStep = 10.0f;  // 角度步长（度），默认为10辐射散开技能
     bool m_skillReady = true;
-    int m_skillCooldownMs = 3000;          // 冷却时间（毫秒）
+
     int m_skillCooldownRemaining = 0;      // 剩余冷却时间（毫秒）
     QTimer* m_skillCooldownTimer;
 
@@ -275,7 +284,7 @@ private:
     bool m_machineGunReady = true;
     bool m_machineGunActive = false;
     int m_machineGunDuration = 2000;          // 持续时间2秒
-    int m_machineGunCooldown = 3000;          // 冷却3秒
+
     int m_machineGunFireInterval = 50;        // 每50ms发射一发
     QTimer* m_machineGunTimer;
     QTimer* m_machineGunCooldownTimer;
@@ -306,5 +315,51 @@ private:
     void resolveEnemyCollision(Enemy* e1, Enemy* e2);
 
 
+
+
+    // 射击间隔控制
+    float m_shootCooldown = 0.5f;        // 初始冷却（秒）
+    float m_shootCooldownTimer = 0.0f;   // 当前冷却计时
+    float m_shootCooldownMin = 0.15f;    // 下限
+
+    // 穿透次数（与概率独立）
+    int m_penetrationCount = 0;          // 初始穿透次数
+    int m_penetrationCountMax = 3;       // 上限
+
+    // 经验加成
+    float m_expMultiplier = 1.0f;        // 可叠加，上限 2.0（200%）
+
+    // 击杀计数（用于死亡界面）
+    int m_killCount = 0;
+
+
+
+
+
+
+
+
+    //-----------------------------------------------------游戏属性调整方式
+    // 游戏时间（毫秒）
+    int m_gameTimeMs = 0;
+
+    // 动态难度参数（可调）
+    float m_enemyBaseHealth = 20.0f;
+    float m_enemyHealthGrowth = 0.5f;   // 每秒增加
+    float m_enemyBaseSpeed = 1.5f;
+    float m_enemySpeedGrowth = 0.002f;
+    float m_enemyMaxSpeed = 3.0f;
+    float m_enemyBaseDamage = 5.0f;
+    float m_enemyDamageGrowth = 0.05f;
+    float m_enemyDamageMax = 20.0f;
+
+
+
+
+    // 生成控制
+    float m_spawnInterval = 1.0f;      // 当前生成间隔（秒）
+    float m_spawnTimer = 0.0f;          // 累加计时器
+    int m_waveCount = 1;               // 每波生成数量
+    int m_maxEnemies = 50;             // 最大敌人数
 
 };
