@@ -1,6 +1,6 @@
 #include "SceneManager.h"
 #include "Scene.h"
-
+#include "../ui/MainWindow.h"
 SceneManager* SceneManager::instance() {
     static SceneManager mgr;
     return &mgr;
@@ -24,6 +24,11 @@ void SceneManager::switchTo(SceneType type) {
     if (m_currentScene) m_currentScene->onExit();
     m_currentScene = it->second;
     if (m_currentScene) m_currentScene->onEnter();
+
+    // //判断下然后切换
+    // if (MainWindow::instance()) {
+    //     MainWindow::instance()->loadSceneQML(type);
+    // }
 }
 
 Scene* SceneManager::currentScene() const {
@@ -42,7 +47,9 @@ void SceneManager::draw() {
 Scene* SceneManager::findTypeScene(SceneType type) {
     auto it = m_scenes.find(type);
     if (it != m_scenes.end()) {
+        qDebug() << "findTypeScene found type:" << static_cast<int>(type) << "scene:" << it->second;
         return it->second;
     }
-    return nullptr;  // 没找到返回空指针
+    qDebug() << "findTypeScene NOT found type:" << static_cast<int>(type);
+    return nullptr;
 }

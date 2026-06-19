@@ -8,6 +8,10 @@
 #include <QMainWindow>
 #include <QQuickWidget>
 #include<QKeyEvent>
+#include"../core/SceneManager.h"
+#include<QQuickView>
+
+
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -22,6 +26,8 @@ public:
     static MainWindow *instance();
     void updatePlayerPosition(const QPointF& pos);
 
+public:
+    void loadSceneQML(SceneType type);
 
 
     //按键操作
@@ -30,9 +36,11 @@ public:
 
     //转发鼠标操作
     void mousePressEvent(QMouseEvent* event);
-
+ QQuickWidget* m_qmlWidget = nullptr;//加载aml显示对象
 
 private:
-    QQuickWidget* m_qmlWidget = nullptr;//加载aml显示对象
+
     QObject* m_qmlRoot = nullptr;//加载游戏对象信息
+
+
 };

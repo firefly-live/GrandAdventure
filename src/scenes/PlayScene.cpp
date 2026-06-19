@@ -9,7 +9,7 @@
 #include <QRandomGenerator>
 #include <QPointF>
 #include <cmath>
-
+#include"../ui/MainWindow.h"
 
 PlayScene::PlayScene(QObject* parent) : Scene(parent) {
 
@@ -82,6 +82,8 @@ void PlayScene::onEnter() {
 
 void PlayScene::update(int deltaMs) {
      if (m_isUpgrading) return;  // 升级中，不更新任何游戏逻辑
+
+     if (m_gameOver) return;//游戏结束,暂停逻辑
     // 1. 玩家移动
     QPointF delta = m_moveDir * m_speed;
     movePlayer(delta);
@@ -194,7 +196,7 @@ bool PlayScene::collidesWithObstacles(const QRectF& rect) const {
 
 
 //角色移动相关
-#include <QDebug>  // 需要添加这个头文件
+#include <QDebug>
 
 void PlayScene::onKeyPress(Qt::Key key) {
     switch (key) {
@@ -288,7 +290,8 @@ void PlayScene::handlePlayerCollision() {
                 e->rect().height() / 2
                 );
             if (!m_invincible &&playerCollisionRect.intersects(enemyCollisionRect)) {
-                m_playerHp -= 1000;
+                m_playerHp -= 500;
+                emit playerHurt();
                 emit playerHpChanged();   // 需要添加这行，否则血条不更新
 
                 // 启动无敌帧
@@ -296,7 +299,7 @@ void PlayScene::handlePlayerCollision() {
 
 
                 if (m_playerHp <= 0) {
-                    SceneManager::instance()->switchTo(SceneType::Death);//由于没有这个,所以无效
+                     setGameOver(true);
                     return;
                 }
                 // 可选：将敌人弹开一段距离，避免连续碰撞
@@ -549,6 +552,7 @@ void PlayScene::handleExpOrbCollection() {
         QPointF toPlayer = m_playerRect.center() - orb->rect().center();
         if (toPlayer.manhattanLength() < 100) { // 拾取半径
             orb->setTarget(m_playerRect.center());
+
         }
 
        if (orb->isMovingToPlayer() && (orb->rect().center() - m_playerRect.center()).manhattanLength() < 15) {
@@ -562,6 +566,14 @@ void PlayScene::handleExpOrbCollection() {
 
 
 void PlayScene::addExp(int value) {
+
+    //经验达到加血效果--超出最大血量.按最大血量算
+    if((m_playerHp+=100)<=m_maxHp){}
+    else{m_playerHp=m_maxHp;}
+    emit playerHpChanged();
+
+
+
     if (m_level >= 20) {
         // 满级后不再增加经验，可丢弃经验球（或显示提示）
         return;
@@ -669,18 +681,24 @@ void PlayScene::castSkill() {
     if(!m_skillReady)
         return;//没冷却好退出
 
+    emit skillCast();
+
     const float angleStepRad = m_skillAngleStep * M_PI / 180.0f;
     const int bulletCount = static_cast<int>(360.0f / m_skillAngleStep);
     QPointF center = m_playerRect.center();
+
+
 
     for (int i = 0; i < bulletCount; ++i) {
         float angle = i * angleStepRad;
         QPointF dir(std::cos(angle), std::sin(angle));
         // 创建子弹，方向为 dir，起始位置为玩家中心
         Bullet* bullet = new Bullet(center, dir, this);
-        // 可设置技能子弹的特殊属性（如速度、伤害、穿透等），但这里使用默认
-        // bullet->setSpeed(技能速度);
+        bullet->setPenetrationChance(m_penetrationChance);
+        int penetrationCount = (QRandomGenerator::global()->generateDouble() < m_penetrationChance) ? 2 : 0;
+        bullet->setPenetrationCount(penetrationCount);
         m_objects.append(bullet);
+        // 可设置技能子弹的特殊属性（如速度、伤害、穿透等），但这里使用默认
     }
 
 
@@ -690,7 +708,7 @@ void PlayScene::castSkill() {
     m_skillCooldownTimer->start();
     emit skillReadyChanged();
     emit skillCooldownUpdated();
-    // 可选：发射后发射一个声音或特效，但不强制
+
 }
 
 
@@ -725,9 +743,11 @@ void PlayScene::fireOneBulletTowardsDirection() {
         float sinA = std::sin(angle);
         QPointF rotatedDir(dir.x() * cosA - dir.y() * sinA,
                            dir.x() * sinA + dir.y() * cosA);
-        // 发射子弹
+        // 发射子弹--设置相同的属性
         Bullet* bullet = new Bullet(center, rotatedDir, this);
-        // 可设置子弹速度、伤害等
+        bullet->setPenetrationChance(m_penetrationChance);
+        int penetrationCount = (QRandomGenerator::global()->generateDouble() < m_penetrationChance) ? 2 : 0;
+        bullet->setPenetrationCount(penetrationCount);
         m_objects.append(bullet);
     }
 }
@@ -736,6 +756,7 @@ void PlayScene::fireOneBulletTowardsDirection() {
 void PlayScene::castMachineGun() {
     if (!m_machineGunReady || m_machineGunActive) return;
 
+     emit machineGunCast();   // 发射信号
     m_machineGunActive = true;
     m_machineGunReady = false;
     emit machineGunReadyChanged();
@@ -755,4 +776,79 @@ int PlayScene::machineGunCooldownRemaining() const {
         return m_machineGunCooldownTimer->remainingTime();
     }
     return 0;
+}
+
+
+
+void PlayScene::resetGame() {
+    // 1. 重置玩家状态
+    m_playerRect = QRectF(100, 100, 80, 80);
+    m_playerHp = 1000;
+    m_maxHp = 1000;
+    m_speed = 5.0f;
+    m_bulletDamage = 100;
+    m_penetrationChance = 0.0f;
+
+    // 2. 重置升级相关
+    m_level = 1;
+    m_currentExp = 0;
+    m_expToNextLevel = 120;
+    m_isUpgrading = false;
+
+    // 3. 重置技能冷却
+    m_skillReady = true;
+    m_skillCooldownRemaining = 0;
+    if (m_skillCooldownTimer) m_skillCooldownTimer->stop();
+
+    m_machineGunReady = true;
+    m_machineGunActive = false;
+    if (m_machineGunTimer) m_machineGunTimer->stop();
+    if (m_machineGunFireTimer) m_machineGunFireTimer->stop();
+    if (m_machineGunCooldownTimer) m_machineGunCooldownTimer->stop();
+    if (m_machineGunCooldownUpdateTimer) m_machineGunCooldownUpdateTimer->stop();
+
+    // 4. 清除所有游戏对象（敌人、子弹、经验球等）
+    for (auto obj : m_objects) {
+        delete obj;
+    }
+    m_objects.clear();
+
+    // 5. 重置无敌状态
+    m_invincible = false;
+    emit invincibleChanged(false);
+
+    // 6. 重置移动方向
+    m_moveDir = QPointF(0,0);
+    m_animDir = AnimDir::Right;
+    m_lastMoveDir = AnimDir::Right;
+    m_left = m_right = m_up = m_down = false;
+
+    // 7. 发射信号通知 UI 更新
+    emit playerRectChanged();
+    emit playerHpChanged();
+    emit statsChanged();
+    emit enemiesChanged();
+    emit bulletsChanged();
+    emit expOrbsChanged();
+    emit skillReadyChanged();
+    emit skillCooldownUpdated();
+    emit machineGunReadyChanged();
+    emit machineGunCooldownUpdated();
+
+    setGameOver(false);
+    qDebug() << "PlayScene reset";
+}
+
+
+
+void PlayScene::setGameOver(bool over) {
+    if (m_gameOver == over) return;
+    m_gameOver = over;
+    emit gameOverChanged();
+}
+
+#include <QApplication>
+
+void PlayScene::quitGame() {
+    QApplication::quit();
 }

@@ -52,6 +52,8 @@ public:
     // ======================== 构造与析构 ========================
     explicit PlayScene(QObject* parent = nullptr);
 
+    Q_INVOKABLE void resetGame();   // 重置游戏状态
+
     // ======================== 玩家属性/状态 ========================
     //闪烁查看
     Q_PROPERTY(bool invincible READ isInvincible NOTIFY invincibleChanged);
@@ -147,6 +149,14 @@ public:
     bool collidesWithObstacles() const;
     bool collidesWithObstacles(const QRectF& rect) const;//重载检测,用于测试敌人对障碍物碰撞
 
+
+    Q_PROPERTY(bool gameOver READ isGameOver NOTIFY gameOverChanged)
+    bool isGameOver() const { return m_gameOver; }
+   Q_INVOKABLE void setGameOver(bool over);
+
+    Q_INVOKABLE void quitGame();
+
+
 signals:
 
     // ======================== 信号 ========================
@@ -154,6 +164,8 @@ signals:
 
     void playerRectChanged();  // 必须在修改 m_playerRect 后发射
     void playerHpChanged();
+
+      void playerHurt();
 
     //-----------子弹类
     void bulletsChanged();
@@ -176,7 +188,16 @@ signals:
 
     void machineGunCooldownUpdated();
 
+    void machineGunCast();   // Q技能触发信号
+
+    void skillCast();   // E技能释放信号
+
+
+      void gameOverChanged();
+
 private:
+
+        bool m_gameOver = false;
     // ======================== 内部方法 ========================
     void loadObstacles(const QString& path);
     void movePlayer(const QPointF& delta); //传入新坐标然后检测---防止玩家移动出地图
@@ -221,10 +242,13 @@ private:
     //--------------------------------------------------敌人类--------------------------------------------
     QList<GameObject*> m_objects;
     QVariantList enemies() const;   // 实现从 m_objects 过滤敌人
-    int m_playerHp = 1000;
+
+
+
 
     //-----------------------------------------------升级相关-----------------------------------------
     // 玩家属性
+    int m_playerHp = 1000;
     int m_level = 1;
     int m_currentExp = 0;
     int m_expToNextLevel = 120; // 100 + level*20

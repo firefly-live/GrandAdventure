@@ -12,16 +12,25 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     m_qmlWidget->setResizeMode(QQuickWidget::SizeRootObjectToView);
 
 
+    //注册对象,之后进行设置窗口操作
+   QString qmlFile = "../../qml/GameCanvas.qml";  // 建议改为 qrc:/qml/GameCanvas.qml
+   Scene* contextObject = SceneManager::instance()->findTypeScene(SceneType::Play);
+    if (contextObject) {
+        m_qmlWidget->rootContext()->setContextProperty("playScene", contextObject);
+    }
 
-    auto scene = dynamic_cast<PlayScene*>(SceneManager::instance()->findTypeScene(SceneType::Play));//获取游戏对象场景
-    m_qmlWidget->rootContext()->setContextProperty("playScene", scene);//然后将游戏场景注册到qml中
+    contextObject = SceneManager::instance()->findTypeScene(SceneType::Death);
+
+    if (contextObject) {
+        m_qmlWidget->rootContext()->setContextProperty("deathScene", contextObject);
+    }
 
 
 
-    m_qmlWidget->setSource(QUrl("../../qml/GameCanvas.qml"));
 
     m_qmlRoot = static_cast<QObject*>(m_qmlWidget->rootObject());
-    setCentralWidget(m_qmlWidget);
+    //setCentralWidget(m_qmlWidget);
+    // m_qmlWidget->setVisible(true);
 }
 
 
@@ -69,4 +78,32 @@ int MainWindow::getAnimDir() const {
 bool MainWindow::isMoving() const {
     auto scene = dynamic_cast<PlayScene*>(SceneManager::instance()->currentScene());
     return scene ? scene->isMoving() : false;
+}
+
+
+void MainWindow::loadSceneQML(SceneType type) {
+
+    QString qmlFile;
+    Scene* contextObject = nullptr;
+
+    switch (type) {
+    case SceneType::Play:
+        qmlFile = "../../qml/GameCanvas.qml";  // 建议改为 qrc:/qml/GameCanvas.qml
+
+        break;
+    case SceneType::Death:
+        qmlFile = "../../qml/DeathScene.qml";
+
+        break;
+    default:
+        return;
+    }
+
+    // ========== 4. 加载 QML 并强制刷新 ==========
+    if (!qmlFile.isEmpty()) {
+        m_qmlWidget->setSource(QUrl(qmlFile));
+        m_qmlWidget->repaint();
+        m_qmlRoot = m_qmlWidget->rootObject();
+        qDebug() << "QML loaded, root:" << m_qmlRoot;
+    }
 }
