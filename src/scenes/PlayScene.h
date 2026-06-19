@@ -195,6 +195,9 @@ signals:
 
       void gameOverChanged();
 
+
+
+
 private:
 
         bool m_gameOver = false;
@@ -281,6 +284,26 @@ private:
 
     float m_machineGunSpreadAngle = 70.0f;          // 总覆盖角度（度）
     int m_machineGunBulletsPerBurst = 7;            // 每波子弹数量
+
+
+
+
+
+
+
+    //---------------------------------------优化网格以及性能
+    // 网格大小（像素），可调整
+    static const int GRID_SIZE = 128;
+    struct GridCell {
+        QList<GameObject*> objects;
+    };
+    QHash<QPair<int,int>, GridCell> m_grid;
+
+    void updateGrid();  // 更新网格
+
+
+      void handleEnemyCollisionsUsingGrid();
+    void resolveEnemyCollision(Enemy* e1, Enemy* e2);
 
 
 

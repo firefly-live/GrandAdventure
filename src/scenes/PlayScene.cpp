@@ -81,35 +81,36 @@ void PlayScene::onEnter() {
 }
 
 void PlayScene::update(int deltaMs) {
-     if (m_isUpgrading) return;  // 升级中，不更新任何游戏逻辑
+    if (m_isUpgrading) return;
+    if (m_gameOver) return;
 
-     if (m_gameOver) return;//游戏结束,暂停逻辑
     // 1. 玩家移动
     QPointF delta = m_moveDir * m_speed;
     movePlayer(delta);
 
-    //更新敌人操作
-    updateGameObjects(deltaMs);   // 包含了敌人更新、碰撞、帧动画和发射信号
+    // 2. 更新所有对象（位置、动画等），但不处理碰撞
+    updateGameObjects(deltaMs);   // 已移除内部碰撞调用
+
+    // 3. 构建当前帧的网格（基于最新位置）
+    updateGrid();
+
+    // 4. 所有碰撞处理（使用最新网格）
+    handleEnemyCollisionsUsingGrid();   // 敌人间碰撞
     handleExpOrbCollection();
-    //更新碰撞操作
-    // 处理子弹与敌人碰撞
-    handleCollisionsWithBullets();
-    // 处理子弹与障碍物碰撞
+    handleCollisionsWithBullets();      // 子弹-敌人
     handleBulletObstacleCollision();
-    // 玩家与敌人碰撞（已有）
     handlePlayerCollision();
-    // 清理死亡对象
+
+    // 5. 清理死亡对象
     cleanupDeadObjects();
 
-
+    // 6. 生成敌人
     static int spawnCounter = 0;
     spawnCounter++;
-    if (spawnCounter > 60) {
+    if (spawnCounter > 15) {
         spawnCounter = 0;
         spawnEnemy();
     }
-
-
 }
 
 void PlayScene::setMoveDirection(const QPointF& dir) {
@@ -311,11 +312,15 @@ void PlayScene::handlePlayerCollision() {
 
 // 处理子弹与敌人碰撞已在 Bullet::onCollision 中完成，但需要删除已死亡敌人和子弹
 void PlayScene::cleanupDeadObjects() {
-    for (int i = m_objects.size()-1; i >= 0; --i) {
+    for (int i = m_objects.size() - 1; i >= 0; --i) {
         GameObject* obj = m_objects[i];
+        if (obj->isMarkedForDelete()) {
+            delete obj;
+            m_objects.removeAt(i);
+            continue;
+        }
         if (Enemy* e = dynamic_cast<Enemy*>(obj)) {
             if (e->isReadyToDelete()) {
-                // 生成经验球
                 int expValue = 50 + m_level * 5;
                 ExpOrb* orb = new ExpOrb(e->rect().center(), expValue, this);
                 m_objects.append(orb);
@@ -325,12 +330,11 @@ void PlayScene::cleanupDeadObjects() {
                 continue;
             }
         }
-        // 子弹已在碰撞中 deleteLater 移除，此处可额外处理超出边界的子弹
+        // 子弹超出边界的删除也统一处理（可选）
         if (Bullet* b = dynamic_cast<Bullet*>(obj)) {
             if (b->rect().x() < -100 || b->rect().x() > m_mapBounds.width()+100 ||
                 b->rect().y() < -100 || b->rect().y() > m_mapBounds.height()+100) {
-                b->deleteLater();
-                m_objects.removeAt(i);
+                b->markForDelete();  // 也可以直接删除，但为了统一，标记删除
             }
         }
     }
@@ -372,7 +376,7 @@ void PlayScene::updateGameObjects(int deltaMs) {
     }
 
     // 2. 敌人间碰撞
-    handleCollisions();
+    // handleCollisions();
 
     // 3. 帧动画更新
     static int accumMs = 0;
@@ -392,40 +396,8 @@ void PlayScene::updateGameObjects(int deltaMs) {
 }
 
 void PlayScene::handleCollisions() {
-    // 收集所有敌人
-    QList<Enemy*> enemies;
-    for (auto obj : m_objects) {
-        if (Enemy* e = dynamic_cast<Enemy*>(obj)) {
-            enemies.append(e);
-        }
-    }
-    // 两两碰撞推开（与原有逻辑相同）
-    for (int i = 0; i < enemies.size(); ++i) {
-        for (int j = i+1; j < enemies.size(); ++j) {
-            QRectF r1 = enemies[i]->rect();
-            QRectF r2 = enemies[j]->rect();
-            QRectF phy1(r1.center().x() - r1.width()/4,
-                        r1.center().y() - r1.height()/4,
-                        r1.width()/2, r1.height()/2);
-            QRectF phy2(r2.center().x() - r2.width()/4,
-                        r2.center().y() - r2.height()/4,
-                        r2.width()/2, r2.height()/2);
-            if (phy1.intersects(phy2)) {
-                QPointF diff = r1.center() - r2.center();
-                if (diff.x() == 0 && diff.y() == 0) diff = QPointF(1,0);
-                qreal len = sqrt(diff.x()*diff.x() + diff.y()*diff.y());
-                diff /= len;
-                qreal overlap = (phy1.width()/2 + phy2.width()/2) -
-                                QLineF(phy1.center(), phy2.center()).length();
-                if (overlap > 0) {
-                    r1.translate(diff * overlap / 2);
-                    r2.translate(-diff * overlap / 2);
-                    enemies[i]->setRect(r1);
-                    enemies[j]->setRect(r2);
-                }
-            }
-        }
-    }
+    // 敌人间碰撞使用网格优化
+    handleEnemyCollisionsUsingGrid();
 }
 
 QVariantList PlayScene::enemies() const {
@@ -461,56 +433,51 @@ void PlayScene::shootBullet(const QPointF& target) {
     bullet->setPenetrationCount(penetrationCount);
     m_objects.append(bullet);
 }
-
 void PlayScene::handleCollisionsWithBullets() {
     for (int i = 0; i < m_objects.size(); ++i) {
         Bullet* bullet = dynamic_cast<Bullet*>(m_objects[i]);
-        if (!bullet) continue;
+        if (!bullet || bullet->isMarkedForDelete()) continue;
+
+        QPointF center = bullet->rect().center();
+        int gx = static_cast<int>(center.x()) / GRID_SIZE;
+        int gy = static_cast<int>(center.y()) / GRID_SIZE;
 
         bool hit = false;
-        for (int j = 0; j < m_objects.size(); ++j) {
-            Enemy* enemy = dynamic_cast<Enemy*>(m_objects[j]);
-            if (!enemy) continue;
-            // 跳过已死亡（正在播放死亡动画或已标记删除）的敌人
-            if (!enemy->isAlive()) continue;
+        for (int dx = -1; dx <= 1; ++dx) {
+            for (int dy = -1; dy <= 1; ++dy) {
+                QPair<int,int> key(gx + dx, gy + dy);
+                auto it = m_grid.find(key);
+                if (it == m_grid.end()) continue;
+                for (auto obj : it->objects) {
+                    Enemy* enemy = dynamic_cast<Enemy*>(obj);
+                    if (!enemy || !enemy->isAlive()) continue;
+                    if (bullet->rect().intersects(enemy->rect())) {
+                        enemy->takeDamage(m_bulletDamage);
+                        enemy->triggerFlash(80);
+                        if (enemy->hp <= 0 && !enemy->isDying()) {
+                            enemy->startDeath(500);
 
-            if (bullet->rect().intersects(enemy->rect())) {
-                enemy->takeDamage(m_bulletDamage);
+                        }
+                        emit explosionAt(bullet->rect().center().x(), bullet->rect().center().y());
+                        QPointF dir = enemy->rect().center() - m_playerRect.center();
+                        enemy->applyKnockback(dir, 5.0f);
 
-                 enemy->triggerFlash(80);   // 触发闪白，持续80ms
-
-                if (enemy->hp <= 0 && !enemy->isDying()) {
-                    enemy->startDeath(500);   // 启动死亡闪烁
+                        if (bullet->canPenetrate()) {
+                            bullet->usePenetration();
+                            hit = false;   // 继续飞行
+                            break;
+                        } else {
+                            bullet->markForDelete();   // 标记删除，但不立即删除
+                            hit = true;
+                            break;
+                        }
+                    }
                 }
-
-                emit explosionAt(bullet->rect().center().x(), bullet->rect().center().y());    // 发射爆炸信号动画
-                hit = true;
-                // 穿透逻辑
-                // 击退方向：从玩家指向敌人
-                QPointF dir = enemy->rect().center() - m_playerRect.center();
-                float force = 5.0f;  // 基础击退力度（可升级调整）
-                enemy->applyKnockback(dir, force);
-
-
-                if (bullet->canPenetrate()) {
-                    bullet->usePenetration();   // 消耗一次穿透次数
-                    // 继续飞行，不删除子弹，跳出内层循环检查下一个敌人（同一帧可能击中多个）
-                    // 注意：这里不 break，因为同一颗子弹可能需要穿透后继续检测同一帧的其他敌人
-                    // 但为简单起见，每帧只处理一次击中，后续帧会继续检测
-                    break;
-                } else {
-                    // 无法穿透，标记删除
-                    delete bullet;
-                    m_objects.removeAt(i);
-                    i--; // 调整索引
-                    break;
-                }
-
-
-
+                if (hit) break;
             }
+            if (hit) break;
         }
-        // 注意：若穿透且击中了敌人，子弹未删除，继续后续循环
+        // 子弹保留在 m_objects 中，由 cleanupDeadObjects 统一删除
     }
 }
 
@@ -519,9 +486,8 @@ void PlayScene::handleBulletObstacleCollision() {
         Bullet* bullet = dynamic_cast<Bullet*>(m_objects[i]);
         if (!bullet) continue;
         if (collidesWithObstacles(bullet->rect())) {
-            emit explosionAt(bullet->rect().center().x(), bullet->rect().center().y());    // 发射爆炸信号动画
-            delete bullet;               // 直接删除
-            m_objects.removeAt(i);       // 移除
+            emit explosionAt(bullet->rect().center().x(), bullet->rect().center().y());
+            bullet->markForDelete();      // 移除
         }
     }
 }
@@ -851,4 +817,137 @@ void PlayScene::setGameOver(bool over) {
 
 void PlayScene::quitGame() {
     QApplication::quit();
+}
+
+
+
+void PlayScene::updateGrid() {
+    m_grid.clear();
+    for (auto obj : m_objects) {
+        // 只处理敌人（type=1）和子弹（type=2）
+        int type = obj->type();
+        if (type != 1 && type != 2) continue;
+        QPointF center = obj->rect().center();
+        int gx = static_cast<int>(center.x()) / GRID_SIZE;
+        int gy = static_cast<int>(center.y()) / GRID_SIZE;
+        QPair<int,int> key(gx, gy);
+        m_grid[key].objects.append(obj);
+    }
+}
+
+
+void PlayScene::handleEnemyCollisionsUsingGrid() {
+    // 获取所有敌人的列表
+    QList<Enemy*> enemies;
+    for (auto obj : m_objects) {
+        if (Enemy* e = dynamic_cast<Enemy*>(obj)) {
+            enemies.append(e);
+        }
+    }
+    if (enemies.size() < 2) return;
+
+    // 构建网格（如果之前没有构建，可以调用 updateGrid，但 updateGrid 已经每帧调用）
+    // 我们直接使用 m_grid，但它包含子弹，我们需要过滤出敌人
+    // 为了效率，可以专门构建敌人网格，但简单起见，我们遍历网格并过滤敌人
+
+    // 遍历所有网格，对每个网格内的敌人进行碰撞
+    // 为了避免重复检测，我们只检测同一网格内的敌人，以及网格与右、下、右下相邻网格的敌人
+    // 但网格的 key 是 (gx, gy)，我们遍历所有 key
+
+    QList<QPair<int,int>> keys = m_grid.keys();
+    for (const auto& key : keys) {
+        int gx = key.first;
+        int gy = key.second;
+
+        // 当前网格中的敌人
+        QList<Enemy*> gridEnemies;
+        for (auto obj : m_grid[key].objects) {
+            if (Enemy* e = dynamic_cast<Enemy*>(obj)) {
+                gridEnemies.append(e);
+            }
+        }
+        // 1. 当前网格内敌人两两碰撞
+        for (int i = 0; i < gridEnemies.size(); ++i) {
+            for (int j = i+1; j < gridEnemies.size(); ++j) {
+                resolveEnemyCollision(gridEnemies[i], gridEnemies[j]);
+            }
+        }
+
+        // 2. 与右侧相邻网格 (gx+1, gy) 的敌人碰撞
+        QPair<int,int> rightKey(gx+1, gy);
+        if (m_grid.contains(rightKey)) {
+            QList<Enemy*> rightEnemies;
+            for (auto obj : m_grid[rightKey].objects) {
+                if (Enemy* e = dynamic_cast<Enemy*>(obj)) {
+                    rightEnemies.append(e);
+                }
+            }
+            for (auto* e1 : gridEnemies) {
+                for (auto* e2 : rightEnemies) {
+                    resolveEnemyCollision(e1, e2);
+                }
+            }
+        }
+
+        // 3. 与下方相邻网格 (gx, gy+1) 的敌人碰撞
+        QPair<int,int> downKey(gx, gy+1);
+        if (m_grid.contains(downKey)) {
+            QList<Enemy*> downEnemies;
+            for (auto obj : m_grid[downKey].objects) {
+                if (Enemy* e = dynamic_cast<Enemy*>(obj)) {
+                    downEnemies.append(e);
+                }
+            }
+            for (auto* e1 : gridEnemies) {
+                for (auto* e2 : downEnemies) {
+                    resolveEnemyCollision(e1, e2);
+                }
+            }
+        }
+
+        // 4. 与右下相邻网格 (gx+1, gy+1) 的敌人碰撞
+        QPair<int,int> downRightKey(gx+1, gy+1);
+        if (m_grid.contains(downRightKey)) {
+            QList<Enemy*> downRightEnemies;
+            for (auto obj : m_grid[downRightKey].objects) {
+                if (Enemy* e = dynamic_cast<Enemy*>(obj)) {
+                    downRightEnemies.append(e);
+                }
+            }
+            for (auto* e1 : gridEnemies) {
+                for (auto* e2 : downRightEnemies) {
+                    resolveEnemyCollision(e1, e2);
+                }
+            }
+        }
+    }
+}
+
+
+void PlayScene::resolveEnemyCollision(Enemy* e1, Enemy* e2) {
+    if (!e1 || !e2) return;
+    if (!e1->isAlive() || !e2->isAlive()) return;
+
+    QRectF r1 = e1->rect();
+    QRectF r2 = e2->rect();
+    QRectF phy1(r1.center().x() - r1.width()/4,
+                r1.center().y() - r1.height()/4,
+                r1.width()/2, r1.height()/2);
+    QRectF phy2(r2.center().x() - r2.width()/4,
+                r2.center().y() - r2.height()/4,
+                r2.width()/2, r2.height()/2);
+    if (phy1.intersects(phy2)) {
+        QPointF diff = r1.center() - r2.center();
+        if (diff.x() == 0 && diff.y() == 0) diff = QPointF(1,0);
+        qreal len = sqrt(diff.x()*diff.x() + diff.y()*diff.y());
+        diff /= len;
+        qreal overlap = (phy1.width()/2 + phy2.width()/2) -
+                        QLineF(phy1.center(), phy2.center()).length();
+        if (overlap > 0) {
+            r1.translate(diff * overlap / 2);
+            r2.translate(-diff * overlap / 2);
+            e1->setRect(r1);
+            e2->setRect(r2);
+        }
+    }
 }

@@ -4,7 +4,7 @@ void Enemy::setRect(const QRectF& r) { m_rect = r; emit rectChanged(); }
 void Enemy::takeDamage(int damage) {
     hp -= damage;
     if (hp <= 0) {
-            markForDelete();   // 仅标记，不删除
+
     }
 }
 void Enemy::startDeath(int durationMs) {
