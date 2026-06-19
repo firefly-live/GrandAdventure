@@ -93,6 +93,7 @@ void PlayScene::update(int deltaMs) {
     m_gameTimeMs += deltaMs;
     m_survivalTime = m_gameTimeMs / 1000;
     float timeSec = m_gameTimeMs / 1000.0f;
+     emit statsChanged();  // 通知 QML 存活时间更新
 
     // 2. 更新生成参数
 
