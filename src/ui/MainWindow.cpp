@@ -13,7 +13,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
 
 
     //注册对象,之后进行设置窗口操作
-   QString qmlFile = "../../qml/GameCanvas.qml";  // 建议改为 qrc:/qml/GameCanvas.qml
+   QString qmlFile = "./qml/GameCanvas.qml";  // 建议改为 qrc:/qml/GameCanvas.qml
    Scene* contextObject = SceneManager::instance()->findTypeScene(SceneType::Play);
     if (contextObject) {
         m_qmlWidget->rootContext()->setContextProperty("playScene", contextObject);

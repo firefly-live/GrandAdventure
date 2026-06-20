@@ -23,7 +23,7 @@ int main(int argc, char* argv[]) {
 
 
 
-      w.m_qmlWidget->setSource(QUrl("../../qml/GameCanvas.qml"));
+      w.m_qmlWidget->setSource(QUrl("./qml/GameCanvas.qml"));
 
       w.show();
     // 切换到游戏场景（构造函数默认已显示游戏，但可再次确认）

@@ -81,7 +81,7 @@ PlayScene::PlayScene(QObject* parent) : Scene(parent) {
 
 void PlayScene::onEnter() {
     qDebug() << "PlayScene entered";
-    loadObstacles("../../Resource/bgc/obstacles.json"); // 路径相对于工作目录
+    loadObstacles("./Resource/bgc/obstacles.json"); // 路径相对于工作目录
 }
 
 void PlayScene::update(int deltaMs) {
@@ -572,8 +572,8 @@ void PlayScene::handleExpOrbCollection() {
 
 void PlayScene::addExp(int value) {
     // 回血逻辑
-    if (m_playerHp + 100 <= m_maxHp) {
-        m_playerHp += 100;
+    if (m_playerHp + 10 <= m_maxHp) {
+        m_playerHp += 10;
     } else {
         m_playerHp = m_maxHp;
     }
@@ -618,7 +618,7 @@ QStringList PlayScene::generateUpgradeOptions() {
     };
     // 随机取三个不重复的
     QStringList chosen;
-    QList<int> indices = {0,1,2,3,4,5,6,7,8};
+    QList<int> indices = {0,1,2,3,4,5,6,7};
     std::random_shuffle(indices.begin(), indices.end());
     for (int i = 0; i < 3; ++i) chosen << allOptions[indices[i]];
     return chosen;
